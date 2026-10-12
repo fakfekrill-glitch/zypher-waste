@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #080c14;
+  --foreground: #f1f5f9;
 }
 
 @theme inline {
@@ -12,15 +12,66 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tabular figures for serials, prices, weights */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom crisp circuit pulse animation */
+@keyframes circuit-flow {
+  0% {
+    stroke-dashoffset: 60;
+  }
+  100% {
+    stroke-dashoffset: 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.animate-circuit-flow {
+  stroke-dasharray: 8 6;
+  animation: circuit-flow 2.2s linear infinite;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(0.98);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Print Styles for Certificate of Destruction & Waybill */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  nav, footer, .no-print, button {
+    display: none !important;
+  }
+  .print-area {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 1.5rem !important;
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
 }
