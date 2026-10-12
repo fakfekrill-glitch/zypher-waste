@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ZYPHER CIRCULAR — Enterprise B2B ITAD & E-Waste Recycling OS",
-  description: "Platform B2B pengelolaan dekomisioning aset IT korporat, sanitasi data NIST SP 800-88, sertifikasi ESG Scope 3, dan daur ulang limbah B3 berizin KLHK.",
+  title: "ZYPHER.ID — Ekosistem Sirkular E-Waste & Kanibalan Suku Cadang",
+  description: "Platform jual-beli HP mati total & rusak via Rekber, katalog part kanibalan teknisi B2B, dan daur ulang e-waste sirkular.",
 };
 
 export default function RootLayout({
