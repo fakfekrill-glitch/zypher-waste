@@ -8,12 +8,14 @@ import { Wrench, ShoppingBag, Scale, History, Plus, Check, ArrowRight } from 'lu
 interface B2BPortalProps {
   theme: ThemeMode;
   b2bRequests: B2BRequest[];
+  catalog?: B2BCatalogItem[];
   onSubmitB2BRequest: (req: B2BRequest) => void;
 }
 
 export const B2BPortal: React.FC<B2BPortalProps> = ({
   theme,
   b2bRequests,
+  catalog,
   onSubmitB2BRequest,
 }) => {
   const isDark = theme === 'dark';
@@ -35,7 +37,9 @@ export const B2BPortal: React.FC<B2BPortalProps> = ({
   const volumeKg = parseInt(boronganVolume || '0', 10);
   const estimatedBoronganTotal = volumeKg * selectedMat.hargaPerKg;
 
-  const filteredCatalog = B2B_CATALOG_ITEMS.filter((item) => {
+  const activeCatalog = catalog && catalog.length > 0 ? catalog : B2B_CATALOG_ITEMS;
+
+  const filteredCatalog = activeCatalog.filter((item) => {
     if (filterCat === 'Semua') return true;
     return item.category === filterCat;
   });
@@ -357,7 +361,17 @@ export const B2BPortal: React.FC<B2BPortalProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{req.reqId}</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold">
+                  <span
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                      req.status === 'Selesai Terkirim'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        : req.status === 'Dalam Pengiriman'
+                        ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300'
+                        : req.status === 'Diproses Gudang'
+                        ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
+                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                    }`}
+                  >
                     {req.status}
                   </span>
                 </div>
@@ -373,7 +387,17 @@ export const B2BPortal: React.FC<B2BPortalProps> = ({
                       Total Nilai: Rp {req.price.toLocaleString('id-ID')}
                     </p>
                   )}
-                  <p className="text-[10px] text-slate-400">{req.createdAt}</p>
+
+                  {req.resiPengiriman && (
+                    <div className="mt-2 p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 flex items-center justify-between text-[11px] font-mono">
+                      <span className="text-sky-900 dark:text-sky-200">
+                        Resi Kirim: <strong>{req.resiPengiriman}</strong> ({req.courier || 'Ekspedisi ZYPHER'})
+                      </span>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Lacak Live</span>
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-slate-400 pt-1">{req.createdAt}</p>
                 </div>
               </div>
             ))

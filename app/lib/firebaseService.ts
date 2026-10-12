@@ -10,8 +10,8 @@ import {
   signOut,
 } from 'firebase/auth';
 import { getDatabase, ref, set, push, onValue, update } from 'firebase/database';
-import { FIREBASE_CONFIG, DISCORD_WEBHOOK_URL, INITIAL_ORDERS, INITIAL_B2B_REQUESTS } from './constants';
-import { Order, B2BRequest } from '../types';
+import { FIREBASE_CONFIG, DISCORD_WEBHOOK_URL, INITIAL_ORDERS, INITIAL_B2B_REQUESTS, B2B_CATALOG_ITEMS } from './constants';
+import { Order, B2BRequest, B2BCatalogItem } from '../types';
 
 // SAFE FIREBASE INITIALIZATION
 let app: any = null;
@@ -29,6 +29,7 @@ try {
 
 const ORDERS_KEY = 'zypher_orders_cache_v2';
 const B2B_KEY = 'zypher_b2b_cache_v2';
+const CATALOG_KEY = 'zypher_b2b_catalog_cache_v2';
 
 export class ZypherBackendService {
   private static isBrowser(): boolean {
@@ -203,10 +204,130 @@ export class ZypherBackendService {
     return updated;
   }
 
+  public static async updateB2BRequestStatus(
+    reqId: string,
+    status: string,
+    resiPengiriman?: string,
+    courier?: string
+  ): Promise<B2BRequest[]> {
+    const current = this.getCachedB2BRequests();
+    const updated = current.map((req) => {
+      if (req.id === reqId || req.reqId === reqId) {
+        return {
+          ...req,
+          status,
+          ...(resiPengiriman ? { resiPengiriman } : {}),
+          ...(courier ? { courier } : {}),
+        };
+      }
+      return req;
+    });
+    this.setCachedB2BRequests(updated);
+
+    try {
+      if (database) {
+        const b2bRef = ref(database, `b2b_requests/${reqId}`);
+        await update(b2bRef, {
+          status,
+          ...(resiPengiriman ? { resiPengiriman } : {}),
+          ...(courier ? { courier } : {}),
+        });
+      }
+    } catch (e) {}
+
+    await this.sendDiscordNotice(
+      `🚚 [STATUS B2B UPDATE] Pesanan ${reqId} diupdate: *${status}* ${resiPengiriman ? `(Resi: ${resiPengiriman})` : ''}`
+    );
+
+    return updated;
+  }
+
+  // --- B2B CATALOG & CANNIBAL SPARE PARTS MANAGEMENT ---
+  public static getCachedCatalog(): B2BCatalogItem[] {
+    if (!this.isBrowser()) return B2B_CATALOG_ITEMS;
+    try {
+      const data = localStorage.getItem(CATALOG_KEY);
+      if (!data) {
+        localStorage.setItem(CATALOG_KEY, JSON.stringify(B2B_CATALOG_ITEMS));
+        return B2B_CATALOG_ITEMS;
+      }
+      return JSON.parse(data);
+    } catch {
+      return B2B_CATALOG_ITEMS;
+    }
+  }
+
+  public static setCachedCatalog(catalog: B2BCatalogItem[]): void {
+    if (this.isBrowser()) {
+      localStorage.setItem(CATALOG_KEY, JSON.stringify(catalog));
+    }
+  }
+
+  public static async createOrUpdateCatalogItem(item: B2BCatalogItem): Promise<B2BCatalogItem[]> {
+    const current = this.getCachedCatalog();
+    const exists = current.find((c) => c.id === item.id);
+    let updated: B2BCatalogItem[];
+    if (exists) {
+      updated = current.map((c) => (c.id === item.id ? item : c));
+    } else {
+      updated = [item, ...current];
+    }
+    this.setCachedCatalog(updated);
+
+    try {
+      if (database) {
+        const catRef = ref(database, `catalog_items/${item.id}`);
+        await set(catRef, item);
+      }
+    } catch (e) {}
+
+    await this.sendDiscordNotice(
+      `🔧 [KATALOG KANIBAL] Part "${item.name}" disimpan (Stok: ${item.stockQty} Pcs | Rp ${item.price.toLocaleString('id-ID')})`
+    );
+
+    return updated;
+  }
+
+  public static async updateCatalogStock(id: string, deltaQty: number): Promise<B2BCatalogItem[]> {
+    const current = this.getCachedCatalog();
+    const updated = current.map((item) => {
+      if (item.id === id) {
+        const newQty = Math.max(0, item.stockQty + deltaQty);
+        return {
+          ...item,
+          stockQty: newQty,
+          stock: `${newQty} Pcs`,
+        };
+      }
+      return item;
+    });
+    this.setCachedCatalog(updated);
+
+    try {
+      if (database) {
+        const target = updated.find((it) => it.id === id);
+        if (target) {
+          const catRef = ref(database, `catalog_items/${id}`);
+          await update(catRef, { stockQty: target.stockQty, stock: target.stock });
+        }
+      }
+    } catch (e) {}
+
+    return updated;
+  }
+
+  public static async deleteCatalogItem(id: string): Promise<B2BCatalogItem[]> {
+    const current = this.getCachedCatalog();
+    const updated = current.filter((item) => item.id !== id);
+    this.setCachedCatalog(updated);
+    return updated;
+  }
+
   public static resetToDefaults(): void {
     if (this.isBrowser()) {
       localStorage.setItem(ORDERS_KEY, JSON.stringify(INITIAL_ORDERS));
       localStorage.setItem(B2B_KEY, JSON.stringify(INITIAL_B2B_REQUESTS));
+      localStorage.setItem(CATALOG_KEY, JSON.stringify(B2B_CATALOG_ITEMS));
     }
   }
 }

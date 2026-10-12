@@ -47,6 +47,7 @@ export interface B2BCatalogItem {
   price: number;
   desc: string;
   grade: 'Grade A Servis' | 'Grade B Minus' | 'Cabutan Kanibal IC';
+  sourceDevice?: string;
 }
 
 export interface B2BRequest {
@@ -58,5 +59,8 @@ export interface B2BRequest {
   price?: number;
   buyerName?: string;
   createdAt?: string;
+  resiPengiriman?: string;
+  courier?: string;
   notes?: string;
 }
+

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ThemeMode, UserRole, Order, B2BRequest } from './types';
+import { ThemeMode, UserRole, Order, B2BRequest, B2BCatalogItem } from './types';
 import { ZypherBackendService } from './lib/firebaseService';
 import { Navbar } from './components/Navbar';
 import { CircularFlowHero } from './components/CircularFlowHero';
@@ -38,6 +38,7 @@ export default function ZypherApp() {
   // DATA STATES
   const [orders, setOrders] = useState<Order[]>([]);
   const [b2bRequests, setB2bRequests] = useState<B2BRequest[]>([]);
+  const [catalogItems, setCatalogItems] = useState<B2BCatalogItem[]>([]);
 
   // MODAL & PRINT
   const [printOrder, setPrintOrder] = useState<Order | null>(null);
@@ -68,9 +69,10 @@ export default function ZypherApp() {
       }
     } catch {}
 
-    // Load initial orders and b2b requests
+    // Load initial orders, b2b requests, and catalog
     setOrders(ZypherBackendService.getCachedOrders());
     setB2bRequests(ZypherBackendService.getCachedB2BRequests());
+    setCatalogItems(ZypherBackendService.getCachedCatalog());
   }, []);
 
   // SYNC DARK CLASS ON ROOT HTML ELEMENT
@@ -118,10 +120,40 @@ export default function ZypherApp() {
     showToast(`Pengajuan B2B ${req.reqId} berhasil disimpan!`);
   };
 
+  const handleUpdateB2BRequestStatus = async (
+    reqId: string,
+    status: string,
+    resi?: string,
+    courier?: string
+  ) => {
+    const updated = await ZypherBackendService.updateB2BRequestStatus(reqId, status, resi, courier);
+    setB2bRequests(updated);
+    showToast(`Status pesanan B2B diupdate ke "${status}"!`);
+  };
+
+  // CATALOG & SPARE PARTS HANDLERS
+  const handleSaveCatalogItem = async (item: B2BCatalogItem) => {
+    const updated = await ZypherBackendService.createOrUpdateCatalogItem(item);
+    setCatalogItems(updated);
+    showToast(`Part "${item.name}" berhasil disimpan ke katalog B2B!`);
+  };
+
+  const handleUpdateCatalogStock = async (id: string, delta: number) => {
+    const updated = await ZypherBackendService.updateCatalogStock(id, delta);
+    setCatalogItems(updated);
+  };
+
+  const handleDeleteCatalogItem = async (id: string) => {
+    const updated = await ZypherBackendService.deleteCatalogItem(id);
+    setCatalogItems(updated);
+    showToast('Part berhasil dihapus dari katalog B2B.');
+  };
+
   const handleResetData = () => {
     ZypherBackendService.resetToDefaults();
     setOrders(ZypherBackendService.getCachedOrders());
     setB2bRequests(ZypherBackendService.getCachedB2BRequests());
+    setCatalogItems(ZypherBackendService.getCachedCatalog());
     showToast('Data pengujian juri berhasil di-reset ke kondisi awal!');
   };
 
@@ -394,6 +426,7 @@ export default function ZypherApp() {
               <B2BPortal
                 theme={theme}
                 b2bRequests={b2bRequests}
+                catalog={catalogItems}
                 onSubmitB2BRequest={handleCreateB2BRequest}
               />
             )}
@@ -404,6 +437,12 @@ export default function ZypherApp() {
                 orders={orders}
                 theme={theme}
                 onUpdateStatus={handleUpdateOrderStatus}
+                b2bRequests={b2bRequests}
+                onUpdateB2BStatus={handleUpdateB2BRequestStatus}
+                catalogItems={catalogItems}
+                onSaveCatalogItem={handleSaveCatalogItem}
+                onUpdateCatalogStock={handleUpdateCatalogStock}
+                onDeleteCatalogItem={handleDeleteCatalogItem}
               />
             )}
 
