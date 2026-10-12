@@ -9,6 +9,8 @@ import { UserShipmentForm } from './components/UserShipmentForm';
 import { UserTrackingView } from './components/UserTrackingView';
 import { B2BPortal } from './components/B2BPortal';
 import { AdminQCView } from './components/AdminQCView';
+import { B2BLoginGateway } from './components/B2BLoginGateway';
+import { AdminLoginGateway } from './components/AdminLoginGateway';
 import { WaybillPrintModal } from './components/WaybillPrintModal';
 import {
   Smartphone,
@@ -43,12 +45,15 @@ export default function ZypherApp() {
   // MODAL & PRINT
   const [printOrder, setPrintOrder] = useState<Order | null>(null);
 
-  // AUTH FORM STATES
+  // AUTH SESSION & FORM STATES
+  const [session, setSession] = useState<{
+    role: UserRole;
+    email: string;
+    name: string;
+  } | null>(null);
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [authError, setAuthError] = useState<string>('');
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [userEmail, setUserEmail] = useState<string>('');
 
   // TOAST NOTIFICATION
   const [toastMsg, setToastMsg] = useState<string>('');
@@ -66,6 +71,15 @@ export default function ZypherApp() {
       const savedTheme = localStorage.getItem('zypher_theme_mode') as ThemeMode;
       if (savedTheme) {
         setTheme(savedTheme);
+      }
+    } catch {}
+
+    // Load active session from localStorage if available
+    try {
+      const savedSession = localStorage.getItem('zypher_user_session');
+      if (savedSession) {
+        const parsed = JSON.parse(savedSession);
+        setSession(parsed);
       }
     } catch {}
 
@@ -157,17 +171,46 @@ export default function ZypherApp() {
     showToast('Data pengujian juri berhasil di-reset ke kondisi awal!');
   };
 
+  // ROLE SESSION HELPERS
+  const handleLoginAs = (sessionRole: UserRole, sessionEmail: string, sessionName: string) => {
+    const newSession = {
+      role: sessionRole,
+      email: sessionEmail,
+      name: sessionName,
+    };
+    setSession(newSession);
+    try {
+      localStorage.setItem('zypher_user_session', JSON.stringify(newSession));
+    } catch {}
+    setRole(sessionRole);
+    setView('app');
+    showToast(
+      sessionRole === 'admin'
+        ? '👑 Sesi Admin Gudang QC Aktif!'
+        : sessionRole === 'b2b'
+        ? '🔧 Sesi Mitra B2B Teknisi Aktif!'
+        : `📱 Sesi Akun Penjual (${sessionEmail}) Aktif!`
+    );
+  };
+
+  const handleLogout = async () => {
+    await ZypherBackendService.logoutUser();
+    setSession(null);
+    try {
+      localStorage.removeItem('zypher_user_session');
+    } catch {}
+    setRole('user');
+    setView('app');
+    showToast('Sesi telah diakhiri. Kembali ke Portal Penjual Publik.');
+  };
+
   // AUTH HANDLERS
   const handleGoogleLogin = async () => {
     setAuthError('');
     try {
       showToast('Menghubungkan ke Google...');
       const user = await ZypherBackendService.loginWithGoogle();
-      setIsLoggedIn(true);
-      setUserEmail(user.email || '');
-      setRole('user');
-      setView('app');
-      showToast(`Selamat datang, ${user.displayName || user.email}!`);
+      handleLoginAs('user', user.email || 'user@gmail.com', user.displayName || 'Penjual E-Waste');
     } catch (err: any) {
       setAuthError(`Gagal autentikasi Google: ${err.message}`);
     }
@@ -182,27 +225,19 @@ export default function ZypherApp() {
     // SPECIAL ROLES CHECK
     if (cleanEmail === 'admin@zypher.id' || cleanEmail.includes('admin')) {
       if (password === 'admin123' || password === 'ZYPHER27') {
-        setIsLoggedIn(true);
-        setUserEmail(cleanEmail);
-        setRole('admin');
-        setView('app');
-        showToast('Sesi Admin Gudang QC Aktif!');
+        handleLoginAs('admin', cleanEmail, 'Admin Gudang Pusat QC');
         return;
       }
-      setAuthError('Kata sandi admin salah.');
+      setAuthError('Kata sandi admin salah. Gunakan: admin123');
       return;
     }
 
     if (cleanEmail.includes('b2b') || cleanEmail.includes('mitra')) {
       if (password === 'mitra123') {
-        setIsLoggedIn(true);
-        setUserEmail(cleanEmail);
-        setRole('b2b');
-        setView('app');
-        showToast('Sesi Mitra B2B Teknisi Aktif!');
+        handleLoginAs('b2b', cleanEmail, 'Mitra Counter Servis');
         return;
       }
-      setAuthError('Kata sandi mitra B2B salah.');
+      setAuthError('Kata sandi mitra B2B salah. Gunakan: mitra123');
       return;
     }
 
@@ -218,24 +253,11 @@ export default function ZypherApp() {
         setAuthMode('login');
       } else {
         const user = await ZypherBackendService.loginWithEmail(cleanEmail, password);
-        setIsLoggedIn(true);
-        setUserEmail(user.email || cleanEmail);
-        setRole('user');
-        setView('app');
-        showToast('Login berhasil!');
+        handleLoginAs('user', user.email || cleanEmail, cleanEmail.split('@')[0]);
       }
     } catch (err: any) {
       setAuthError(`Gagal: ${err.message}`);
     }
-  };
-
-  const handleLogout = async () => {
-    await ZypherBackendService.logoutUser();
-    setIsLoggedIn(false);
-    setUserEmail('');
-    setRole('user');
-    setView('app');
-    showToast('Sesi telah diakhiri.');
   };
 
   const isDark = theme === 'dark';
@@ -265,7 +287,7 @@ export default function ZypherApp() {
         onViewChange={setView}
         theme={theme}
         onToggleTheme={handleToggleTheme}
-        isLoggedIn={isLoggedIn}
+        session={session}
         onLogout={handleLogout}
         onResetData={handleResetData}
       />
@@ -328,7 +350,7 @@ export default function ZypherApp() {
                   onClick={() => setRole('user')}
                   className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
                     role === 'user'
-                      ? 'bg-emerald-600 text-white'
+                      ? 'bg-emerald-600 text-white shadow-xs'
                       : isDark
                       ? 'bg-slate-800 text-slate-300'
                       : 'bg-slate-100 text-slate-600'
@@ -339,28 +361,30 @@ export default function ZypherApp() {
                 <button
                   type="button"
                   onClick={() => setRole('b2b')}
-                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1 ${
                     role === 'b2b'
-                      ? 'bg-amber-600 text-white'
+                      ? 'bg-amber-600 text-white shadow-xs'
                       : isDark
                       ? 'bg-slate-800 text-slate-300'
                       : 'bg-slate-100 text-slate-600'
                   }`}
                 >
-                  B2B
+                  <span>B2B</span>
+                  {session?.role !== 'b2b' && <span className="text-[10px] opacity-75">🔒</span>}
                 </button>
                 <button
                   type="button"
                   onClick={() => setRole('admin')}
-                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1 ${
                     role === 'admin'
-                      ? 'bg-sky-600 text-white'
+                      ? 'bg-sky-600 text-white shadow-xs'
                       : isDark
                       ? 'bg-slate-800 text-slate-300'
                       : 'bg-slate-100 text-slate-600'
                   }`}
                 >
-                  Admin
+                  <span>Admin</span>
+                  {session?.role !== 'admin' && <span className="text-[10px] opacity-75">🔒</span>}
                 </button>
               </div>
             </div>
@@ -423,27 +447,43 @@ export default function ZypherApp() {
 
             {/* ROLE 2: B2B VIEW */}
             {role === 'b2b' && (
-              <B2BPortal
-                theme={theme}
-                b2bRequests={b2bRequests}
-                catalog={catalogItems}
-                onSubmitB2BRequest={handleCreateB2BRequest}
-              />
+              session?.role === 'b2b' ? (
+                <B2BPortal
+                  theme={theme}
+                  b2bRequests={b2bRequests}
+                  catalog={catalogItems}
+                  onSubmitB2BRequest={handleCreateB2BRequest}
+                />
+              ) : (
+                <B2BLoginGateway
+                  theme={theme}
+                  onLoginSuccess={(email, name) => handleLoginAs('b2b', email, name)}
+                  onBackToUser={() => setRole('user')}
+                />
+              )
             )}
 
             {/* ROLE 3: ADMIN VIEW */}
             {role === 'admin' && (
-              <AdminQCView
-                orders={orders}
-                theme={theme}
-                onUpdateStatus={handleUpdateOrderStatus}
-                b2bRequests={b2bRequests}
-                onUpdateB2BStatus={handleUpdateB2BRequestStatus}
-                catalogItems={catalogItems}
-                onSaveCatalogItem={handleSaveCatalogItem}
-                onUpdateCatalogStock={handleUpdateCatalogStock}
-                onDeleteCatalogItem={handleDeleteCatalogItem}
-              />
+              session?.role === 'admin' ? (
+                <AdminQCView
+                  orders={orders}
+                  theme={theme}
+                  onUpdateStatus={handleUpdateOrderStatus}
+                  b2bRequests={b2bRequests}
+                  onUpdateB2BStatus={handleUpdateB2BRequestStatus}
+                  catalogItems={catalogItems}
+                  onSaveCatalogItem={handleSaveCatalogItem}
+                  onUpdateCatalogStock={handleUpdateCatalogStock}
+                  onDeleteCatalogItem={handleDeleteCatalogItem}
+                />
+              ) : (
+                <AdminLoginGateway
+                  theme={theme}
+                  onLoginSuccess={(email, name) => handleLoginAs('admin', email, name)}
+                  onBackToUser={() => setRole('user')}
+                />
+              )
             )}
 
           </div>
@@ -522,11 +562,14 @@ export default function ZypherApp() {
             }`}
           >
             <div className="text-center space-y-1">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                {authMode === 'login' ? 'Masuk ke Sistem ZYPHER.ID' : 'Pendaftaran Akun Baru'}
+              <span className="text-[10px] font-mono font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                Portal Akun Penjual HP (User)
+              </span>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white pt-1">
+                {authMode === 'login' ? 'Masuk Akun Penjual ZYPHER' : 'Daftar Akun Penjual Baru'}
               </h2>
               <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                Akses dashboard penjual e-waste, mitra B2B, atau verifikasi admin
+                Kelola riwayat pengiriman HP rusak, taksiran harga, dan pencairan rekening rekber
               </p>
             </div>
 
@@ -565,11 +608,11 @@ export default function ZypherApp() {
             <form onSubmit={handleEmailAuthSubmit} className="space-y-3 text-xs">
               <div>
                 <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Alamat Email
+                  Alamat Email Penjual
                 </label>
                 <input
                   type="email"
-                  placeholder="nama@email.com (admin@zypher.id / mitra@zypher.id)"
+                  placeholder="budi@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={`w-full p-2.5 rounded-xl border outline-none ${
@@ -585,7 +628,7 @@ export default function ZypherApp() {
                 </label>
                 <input
                   type="password"
-                  placeholder="Kata sandi..."
+                  placeholder="Kata sandi akun..."
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={`w-full p-2.5 rounded-xl border outline-none ${
@@ -599,7 +642,7 @@ export default function ZypherApp() {
                 type="submit"
                 className="w-full py-3 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm active:scale-95"
               >
-                {authMode === 'login' ? 'Masuk ke Sistem' : 'Daftar Akun Baru'}
+                {authMode === 'login' ? 'Masuk ke Akun Penjual' : 'Daftar Akun Baru'}
               </button>
             </form>
 
@@ -614,6 +657,33 @@ export default function ZypherApp() {
               >
                 {authMode === 'login' ? 'Belum punya akun? Daftar gratis' : 'Sudah punya akun? Masuk'}
               </button>
+            </div>
+
+            {/* SEPARATE ROLE PORTAL ACCESS BUTTONS */}
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 text-center space-y-2">
+              <p className="text-[11px] text-slate-400">Atau akses gerbang otentikasi peran lain:</p>
+              <div className="flex justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRole('b2b');
+                    setView('app');
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
+                >
+                  🔧 Gerbang Mitra B2B
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRole('admin');
+                    setView('app');
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-sky-300 dark:border-sky-800 text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors"
+                >
+                  👑 Gerbang Admin QC
+                </button>
+              </div>
             </div>
           </div>
         )}

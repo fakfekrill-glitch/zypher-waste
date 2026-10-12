@@ -4,6 +4,12 @@ import React from 'react';
 import { UserRole, ThemeMode } from '../types';
 import { Smartphone, Wrench, ShieldCheck, Sun, Moon, RefreshCw, LogOut, LogIn } from 'lucide-react';
 
+export interface AuthSession {
+  role: UserRole;
+  email: string;
+  name: string;
+}
+
 interface NavbarProps {
   currentRole: UserRole;
   onRoleChange: (role: UserRole) => void;
@@ -11,7 +17,7 @@ interface NavbarProps {
   onViewChange: (view: 'app' | 'about' | 'auth') => void;
   theme: ThemeMode;
   onToggleTheme: () => void;
-  isLoggedIn: boolean;
+  session: AuthSession | null;
   onLogout: () => void;
   onResetData: () => void;
 }
@@ -23,7 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onViewChange,
   theme,
   onToggleTheme,
-  isLoggedIn,
+  session,
   onLogout,
   onResetData,
 }) => {
@@ -112,7 +118,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <Wrench className="h-3.5 w-3.5" />
-              <span>Mitra Teknisi & Part (B2B)</span>
+              <span>Mitra B2B</span>
+              {session?.role !== 'b2b' && (
+                <span className="text-[10px] opacity-75 font-mono">🔒</span>
+              )}
             </button>
 
             <button
@@ -132,7 +141,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Gudang QC & Rekber</span>
+              <span>Gudang QC (Admin)</span>
+              {session?.role !== 'admin' && (
+                <span className="text-[10px] opacity-75 font-mono">🔒</span>
+              )}
             </button>
           </div>
 
@@ -188,16 +200,31 @@ export const Navbar: React.FC<NavbarProps> = ({
               Tentang
             </button>
 
-            {/* AUTH / LOGIN */}
-            {isLoggedIn ? (
-              <button
-                type="button"
-                onClick={onLogout}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600/10 hover:bg-rose-600/20 text-rose-600 border border-rose-600/30 transition-all flex items-center gap-1.5"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Keluar</span>
-              </button>
+            {/* AUTH / LOGIN STATUS */}
+            {session ? (
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border ${
+                    session.role === 'admin'
+                      ? 'bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-800'
+                      : session.role === 'b2b'
+                      ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                      : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                  }`}
+                >
+                  <span>{session.role === 'admin' ? '👑 Admin' : session.role === 'b2b' ? '🔧 B2B' : '📱 User'}</span>
+                </span>
+
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600/10 hover:bg-rose-600/20 text-rose-600 border border-rose-600/30 transition-all flex items-center gap-1.5"
+                  title={`Keluar dari sesi ${session.email}`}
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Keluar</span>
+                </button>
+              </div>
             ) : (
               <button
                 type="button"
@@ -209,7 +236,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               >
                 <LogIn className="h-3.5 w-3.5" />
-                <span>Masuk</span>
+                <span>Masuk User</span>
               </button>
             )}
 
