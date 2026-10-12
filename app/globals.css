@@ -1,15 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: #080c14;
-  --foreground: #f1f5f9;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+  --card-muted: #f1f5f9;
+  --accent-emerald: #059669;
+  --accent-cyan: #0284c7;
+  --accent-amber: #d97706;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark {
+  --background: #090d16;
+  --foreground: #f8fafc;
+  --card-bg: #0f172a;
+  --card-border: #1e293b;
+  --card-muted: #141f36;
+  --accent-emerald: #10b981;
+  --accent-cyan: #38bdf8;
+  --accent-amber: #f59e0b;
 }
 
 body {
@@ -17,18 +27,19 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Tabular figures for serials, prices, weights */
+/* Tabular figures for numbers, prices, and resi */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Custom crisp circuit pulse animation */
+/* Custom smooth circuit pulse animation */
 @keyframes circuit-flow {
   0% {
-    stroke-dashoffset: 60;
+    stroke-dashoffset: 48;
   }
   100% {
     stroke-dashoffset: 0;
@@ -36,39 +47,52 @@ body {
 }
 
 .animate-circuit-flow {
-  stroke-dasharray: 8 6;
-  animation: circuit-flow 2.2s linear infinite;
+  stroke-dasharray: 6 6;
+  animation: circuit-flow 1.8s linear infinite;
 }
 
-@keyframes pulse-subtle {
+@keyframes pulse-gentle {
   0%, 100% {
     opacity: 1;
     transform: scale(1);
   }
   50% {
-    opacity: 0.65;
-    transform: scale(0.98);
+    opacity: 0.7;
+    transform: scale(0.97);
   }
 }
 
-.animate-pulse-subtle {
-  animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.animate-pulse-gentle {
+  animation: pulse-gentle 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Print Styles for Certificate of Destruction & Waybill */
+@keyframes float-subtle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-float {
+  animation: float-subtle 4s ease-in-out infinite;
+}
+
+/* Print Styles for Waybill and Receipt */
 @media print {
   body {
     background: #ffffff !important;
     color: #000000 !important;
   }
-  nav, footer, .no-print, button {
+  header, nav, footer, .no-print, button {
     display: none !important;
   }
   .print-area {
     display: block !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 1.5rem !important;
+    padding: 1rem !important;
     box-shadow: none !important;
     border: 1px solid #cbd5e1 !important;
     background: #ffffff !important;

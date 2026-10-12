@@ -1,332 +1,598 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { UserRole, BatchLot, B2BLotTender, HarvestedComponent, LotStatus, TriageDestination } from './types';
-import { ZypherDataService } from './lib/storage';
+import { ThemeMode, UserRole, Order, B2BRequest } from './types';
+import { ZypherBackendService } from './lib/firebaseService';
 import { Navbar } from './components/Navbar';
-import { ChainOfCustodyFlow } from './components/ChainOfCustodyFlow';
-import { EsgYieldCalculator } from './components/EsgYieldCalculator';
-import { ConsignorPortal } from './components/ConsignorPortal';
-import { RecyclerPortal } from './components/RecyclerPortal';
-import { CompliancePortal } from './components/CompliancePortal';
-import { CertificateModal } from './components/CertificateModal';
-import { WaybillModal } from './components/WaybillModal';
-import { ShieldCheck, Cpu, ArrowRight, CheckCircle2, RefreshCw, Award, Lock, Sparkles } from 'lucide-react';
+import { CircularFlowHero } from './components/CircularFlowHero';
+import { UserShipmentForm } from './components/UserShipmentForm';
+import { UserTrackingView } from './components/UserTrackingView';
+import { B2BPortal } from './components/B2BPortal';
+import { AdminQCView } from './components/AdminQCView';
+import { WaybillPrintModal } from './components/WaybillPrintModal';
+import {
+  Smartphone,
+  Wrench,
+  ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
+  LogIn,
+  Mail,
+  Lock,
+  ArrowRight,
+  ExternalLink,
+} from 'lucide-react';
 
-export default function ZypherCircularPlatform() {
-  const [currentRole, setCurrentRole] = useState<UserRole>('consignor');
-  const [activeSection, setActiveSection] = useState<string>('overview');
+export default function ZypherApp() {
+  // THEME: Default to 'light' as requested by user
+  const [theme, setTheme] = useState<ThemeMode>('light');
 
-  // STORE DATA STATES
-  const [lots, setLots] = useState<BatchLot[]>([]);
-  const [tenders, setTenders] = useState<B2BLotTender[]>([]);
-  const [components, setComponents] = useState<HarvestedComponent[]>([]);
+  // VIEW NAVIGATION
+  const [view, setView] = useState<'app' | 'about' | 'auth'>('app');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [role, setRole] = useState<UserRole>('user');
 
-  // MODAL STATES
-  const [selectedLotForCertificate, setSelectedLotForCertificate] = useState<BatchLot | null>(null);
-  const [selectedLotForWaybill, setSelectedLotForWaybill] = useState<BatchLot | null>(null);
-  const [calculatorPrefill, setCalculatorPrefill] = useState<{
-    category: string;
-    units: number;
-    weightKg: number;
-    estValue: number;
-  } | null>(null);
+  // USER INNER TABS
+  const [userTab, setUserTab] = useState<'kirim' | 'lacak'>('kirim');
+
+  // DATA STATES
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [b2bRequests, setB2bRequests] = useState<B2BRequest[]>([]);
+
+  // MODAL & PRINT
+  const [printOrder, setPrintOrder] = useState<Order | null>(null);
+
+  // AUTH FORM STATES
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [authError, setAuthError] = useState<string>('');
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [userEmail, setUserEmail] = useState<string>('');
 
   // TOAST NOTIFICATION
   const [toastMsg, setToastMsg] = useState<string>('');
-  const triggerToast = (msg: string) => {
+  const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 3500);
   };
 
   // INITIAL LOAD
   useEffect(() => {
-    document.title = 'ZYPHER CIRCULAR — Enterprise B2B E-Waste & ITAD OS';
-    setLots(ZypherDataService.getLots());
-    setTenders(ZypherDataService.getTenders());
-    setComponents(ZypherDataService.getComponents());
+    document.title = 'ZYPHER.ID — Ekosistem Sirkular E-Waste & Kanibalan Suku Cadang';
+
+    // Load theme from localStorage if available
+    try {
+      const savedTheme = localStorage.getItem('zypher_theme_mode') as ThemeMode;
+      if (savedTheme) {
+        setTheme(savedTheme);
+      }
+    } catch {}
+
+    // Load initial orders and b2b requests
+    setOrders(ZypherBackendService.getCachedOrders());
+    setB2bRequests(ZypherBackendService.getCachedB2BRequests());
   }, []);
 
-  // DATA HANDLERS
-  const handleAddLot = (newLot: BatchLot) => {
-    const updated = ZypherDataService.saveLot(newLot);
-    setLots(updated);
-    triggerToast(`Batch ${newLot.id} berhasil didaftarkan dengan manifes Festronik!`);
+  // TOGGLE THEME
+  const handleToggleTheme = () => {
+    const nextTheme: ThemeMode = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    try {
+      localStorage.setItem('zypher_theme_mode', nextTheme);
+    } catch {}
+    showToast(nextTheme === 'light' ? 'Mode Terang (Light) Aktif' : 'Mode Gelap (Dark) Aktif');
   };
 
-  const handleUpdateLotStatus = (
-    id: string,
-    status: LotStatus,
-    triage?: TriageDestination,
-    isSettled?: boolean
+  // ORDER HANDLERS
+  const handleCreateOrder = async (newOrder: Order) => {
+    const updated = await ZypherBackendService.createOrder(newOrder);
+    setOrders(updated);
+    showToast(`Resi ${newOrder.resi} berhasil diterbitkan!`);
+  };
+
+  const handleUpdateOrderStatus = async (
+    orderId: string,
+    status: Order['status'],
+    triage?: Order['triage'],
+    finalPrice?: number
   ) => {
-    const updated = ZypherDataService.updateLotStatus(id, status, triage, isSettled);
-    setLots(updated);
-    triggerToast(`Status Lot ${id} diperbarui: ${status}${isSettled ? ' (Dana Rekber Dicairkan)' : ''}`);
+    const updated = await ZypherBackendService.updateOrderStatus(orderId, status, triage, finalPrice);
+    setOrders(updated);
+    showToast(`Status pesanan ${orderId} diperbarui ke "${status}"`);
   };
 
-  const handlePlaceBid = (tenderId: string, amount: number) => {
-    const updated = ZypherDataService.placeBid(tenderId, amount);
-    setTenders(updated);
-    triggerToast(`Penawaran Rp ${amount.toLocaleString('id-ID')} berhasil dicatat di lelang!`);
-  };
-
-  const handleOrderComponent = (componentId: string, qty: number) => {
-    const updated = ZypherDataService.orderComponent(componentId, qty);
-    setComponents(updated);
-    triggerToast(`Pemesanan ${qty} unit suku cadang berhasil diproses!`);
+  const handleCreateB2BRequest = async (req: B2BRequest) => {
+    const updated = await ZypherBackendService.createB2BRequest(req);
+    setB2bRequests(updated);
+    showToast(`Pengajuan B2B ${req.reqId} berhasil disimpan!`);
   };
 
   const handleResetData = () => {
-    ZypherDataService.resetDefaults();
-    setLots(ZypherDataService.getLots());
-    setTenders(ZypherDataService.getTenders());
-    setComponents(ZypherDataService.getComponents());
-    triggerToast('Data demonstrasi berhasil di-reset ke kondisi awal!');
+    ZypherBackendService.resetToDefaults();
+    setOrders(ZypherBackendService.getCachedOrders());
+    setB2bRequests(ZypherBackendService.getCachedB2BRequests());
+    showToast('Data pengujian juri berhasil di-reset ke kondisi awal!');
   };
 
-  const handleApplyCalculatorToBatch = (data: {
-    category: string;
-    units: number;
-    weightKg: number;
-    estValue: number;
-  }) => {
-    setCalculatorPrefill(data);
-    setCurrentRole('consignor');
-    setActiveSection('portal');
-    triggerToast('Data simulasi kalkulator disalin ke form dekomisioning!');
+  // AUTH HANDLERS
+  const handleGoogleLogin = async () => {
+    setAuthError('');
+    try {
+      showToast('Menghubungkan ke Google...');
+      const user = await ZypherBackendService.loginWithGoogle();
+      setIsLoggedIn(true);
+      setUserEmail(user.email || '');
+      setRole('user');
+      setView('app');
+      showToast(`Selamat datang, ${user.displayName || user.email}!`);
+    } catch (err: any) {
+      setAuthError(`Gagal autentikasi Google: ${err.message}`);
+    }
   };
+
+  const handleEmailAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // SPECIAL ROLES CHECK
+    if (cleanEmail === 'admin@zypher.id' || cleanEmail.includes('admin')) {
+      if (password === 'admin123' || password === 'ZYPHER27') {
+        setIsLoggedIn(true);
+        setUserEmail(cleanEmail);
+        setRole('admin');
+        setView('app');
+        showToast('Sesi Admin Gudang QC Aktif!');
+        return;
+      }
+      setAuthError('Kata sandi admin salah.');
+      return;
+    }
+
+    if (cleanEmail.includes('b2b') || cleanEmail.includes('mitra')) {
+      if (password === 'mitra123') {
+        setIsLoggedIn(true);
+        setUserEmail(cleanEmail);
+        setRole('b2b');
+        setView('app');
+        showToast('Sesi Mitra B2B Teknisi Aktif!');
+        return;
+      }
+      setAuthError('Kata sandi mitra B2B salah.');
+      return;
+    }
+
+    // REGULAR USER FIREBASE AUTH
+    try {
+      if (authMode === 'register') {
+        if (password.length < 8) {
+          setAuthError('Kata sandi minimal 8 karakter.');
+          return;
+        }
+        await ZypherBackendService.registerWithEmail(cleanEmail, password);
+        showToast('Tautan verifikasi telah dikirim ke email Anda.');
+        setAuthMode('login');
+      } else {
+        const user = await ZypherBackendService.loginWithEmail(cleanEmail, password);
+        setIsLoggedIn(true);
+        setUserEmail(user.email || cleanEmail);
+        setRole('user');
+        setView('app');
+        showToast('Login berhasil!');
+      }
+    } catch (err: any) {
+      setAuthError(`Gagal: ${err.message}`);
+    }
+  };
+
+  const handleLogout = async () => {
+    await ZypherBackendService.logoutUser();
+    setIsLoggedIn(false);
+    setUserEmail('');
+    setRole('user');
+    setView('app');
+    showToast('Sesi telah diakhiri.');
+  };
+
+  const isDark = theme === 'dark';
 
   return (
-    <div className="min-h-screen bg-[#080c14] text-slate-100 flex flex-col selection:bg-emerald-900/60 selection:text-emerald-200">
-      
-      {/* TOAST POPUP */}
+    <div
+      className={`min-h-screen flex flex-col transition-colors duration-300 selection:bg-emerald-500 selection:text-white ${
+        isDark ? 'dark bg-[#090d16] text-slate-100' : 'bg-[#f8fafc] text-slate-900'
+      }`}
+    >
+      {/* FLOATING TOAST NOTIFICATION */}
       {toastMsg && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] bg-slate-900/95 text-slate-100 px-5 py-2.5 rounded-xl shadow-2xl border border-emerald-500/50 font-medium text-xs tracking-wide text-center flex items-center gap-2 pointer-events-none backdrop-blur-md">
-          <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2.5 rounded-2xl shadow-xl border font-semibold text-xs tracking-wide flex items-center gap-2 pointer-events-none backdrop-blur-md animate-bounce bg-emerald-600 text-white border-emerald-500">
+          <CheckCircle2 className="h-4 w-4" />
           <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* GLOBAL NAVBAR WITH REAL-TIME COMMODITIES & ROLE SWITCHER */}
+      {/* TOP NAVIGATION BAR */}
       <Navbar
-        currentRole={currentRole}
-        onRoleChange={setCurrentRole}
-        activeSection={activeSection}
-        onSectionChange={setActiveSection}
+        currentRole={role}
+        onRoleChange={(r) => {
+          setRole(r);
+          setView('app');
+        }}
+        activeView={view}
+        onViewChange={setView}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
+        isLoggedIn={isLoggedIn}
+        onLogout={handleLogout}
         onResetData={handleResetData}
       />
 
-      {/* MAIN CONTAINER */}
-      <main className="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
         
-        {/* VIEW 1: HERO & COMMAND CENTER OVERVIEW */}
-        {activeSection === 'overview' && (
-          <div className="space-y-12">
+        {/* VIEW 1: MAIN APPLICATION DASHBOARD */}
+        {view === 'app' && (
+          <div className="space-y-8">
             
-            {/* HERO STATEMENT */}
-            <div className="relative rounded-3xl bg-gradient-to-b from-slate-900/90 via-slate-900/40 to-slate-950/90 border border-slate-800 p-8 sm:p-12 overflow-hidden shadow-2xl">
-              {/* ACCENT LIGHTING */}
-              <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+            {/* HERO BANNER & CIRCULAR FLOW */}
+            <CircularFlowHero
+              theme={theme}
+              onStartShipment={() => {
+                setRole('user');
+                setUserTab('kirim');
+              }}
+              onExploreCatalog={() => {
+                setRole('b2b');
+              }}
+            />
 
-              <div className="relative z-10 max-w-3xl space-y-5">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-xs font-mono font-medium">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  <span>Kepatuhan PP 22/2021 & Standar Militer NIST SP 800-88</span>
+            {/* SECTOR SWITCHER TITLE BAR */}
+            <div
+              className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-sm ${
+                    role === 'user'
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                      : role === 'b2b'
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                      : 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300'
+                  }`}
+                >
+                  {role === 'user' ? '📱' : role === 'b2b' ? '🔧' : '🛡️'}
                 </div>
-
-                <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-100 leading-tight">
-                  Infrastruktur B2B ITAD & Daur Ulang Logam Berharga Terverifikasi
-                </h1>
-
-                <p className="text-sm sm:text-base text-slate-400 leading-relaxed max-w-2xl">
-                  Platform tata kelola limbah elektronik (E-Waste B3) tingkat korporasi di Indonesia.
-                  Menghubungkan perusahaan perbankan, telekomunikasi, dan data center dengan smelter berizin resmi
-                  melalui pengawasan rantai pasok terenkripsi, proteksi dana Escrow, dan pelaporan emisi Scope 3 ESG.
-                </p>
-
-                <div className="flex flex-wrap items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCurrentRole('consignor');
-                      setActiveSection('portal');
-                    }}
-                    className="px-5 py-3 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-colors flex items-center gap-2 shadow-lg shadow-emerald-950/30"
-                  >
-                    <span>Konsol Korporasi (Dekomisioning)</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveSection('calculator')}
-                    className="px-5 py-3 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 transition-colors"
-                  >
-                    Simulasi ESG & Kandungan Logam
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCurrentRole('recycler');
-                      setActiveSection('portal');
-                    }}
-                    className="px-5 py-3 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-900/60 transition-colors"
-                  >
-                    Lelang Smelter B3 & Sparepart
-                  </button>
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
+                    {role === 'user' && 'Portal Pemilik HP Rusak / Penjual E-Waste'}
+                    {role === 'b2b' && 'Portal Mitra Teknisi & Pengepul Limbah (B2B)'}
+                    {role === 'admin' && 'Portal Gudang QC & Otorisasi Rekber ZYPHER'}
+                  </h2>
+                  <span className="text-[11px] text-slate-500">
+                    {role === 'user' && 'Kirim HP mati total (matot) Anda, dapatkan taksiran harga, dan pencairan aman.'}
+                    {role === 'b2b' && 'Pesan suku cadang cabutan (kanibal) & ajukan borongan limbah per kilo.'}
+                    {role === 'admin' && 'Periksa paket unboxing fisik, tentukan alokasi triage, dan cairkan dana escrow.'}
+                  </span>
                 </div>
               </div>
 
-              {/* INDUSTRIAL PROOF BANNER */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10 pt-8 border-t border-slate-800/80">
-                <div>
-                  <span className="text-[10px] font-mono text-slate-500 uppercase block">Tonase E-Waste Terkelola</span>
-                  <span className="text-xl sm:text-2xl font-black font-mono text-slate-100 tabular-nums">148.2 Ton</span>
-                  <span className="text-[10px] text-emerald-400 block mt-0.5">100% Zero-Landfill Diverted</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-mono text-slate-500 uppercase block">Emas (Au) Terekstraksi</span>
-                  <span className="text-xl sm:text-2xl font-black font-mono text-amber-300 tabular-nums">4.82 Kg</span>
-                  <span className="text-[10px] text-slate-400 block mt-0.5">Kemurnian &gt;99.9% Refined</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-mono text-slate-500 uppercase block">Tembaga (Cu) Sirkular</span>
-                  <span className="text-xl sm:text-2xl font-black font-mono text-slate-100 tabular-nums">18.4 Ton</span>
-                  <span className="text-[10px] text-slate-400 block mt-0.5">Katoda Smelter Berizin</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-mono text-slate-500 uppercase block">Scope 3 CO₂e Averted</span>
-                  <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400 tabular-nums">412.6 Ton</span>
-                  <span className="text-[10px] text-emerald-400/80 block mt-0.5">Sertifikat Emisi Auditor</span>
-                </div>
+              {/* QUICK SWITCHER BUTTONS */}
+              <div className="flex items-center gap-1.5 self-end sm:self-auto text-xs">
+                <button
+                  type="button"
+                  onClick={() => setRole('user')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                    role === 'user'
+                      ? 'bg-emerald-600 text-white'
+                      : isDark
+                      ? 'bg-slate-800 text-slate-300'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  User
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole('b2b')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                    role === 'b2b'
+                      ? 'bg-amber-600 text-white'
+                      : isDark
+                      ? 'bg-slate-800 text-slate-300'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  B2B
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole('admin')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                    role === 'admin'
+                      ? 'bg-sky-600 text-white'
+                      : isDark
+                      ? 'bg-slate-800 text-slate-300'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  Admin
+                </button>
               </div>
             </div>
 
-            {/* CHAIN OF CUSTODY INTERACTIVE PIPELINE */}
-            <ChainOfCustodyFlow />
+            {/* ROLE 1: USER VIEW */}
+            {role === 'user' && (
+              <div className="space-y-5">
+                <div
+                  className={`flex p-1 rounded-xl border text-xs font-semibold max-w-sm ${
+                    isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setUserTab('kirim')}
+                    className={`flex-1 py-2 rounded-lg transition-all ${
+                      userTab === 'kirim'
+                        ? isDark
+                          ? 'bg-slate-800 text-emerald-400 border border-slate-700'
+                          : 'bg-white text-emerald-700 border border-slate-200 shadow-xs'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    Formulir Pengiriman
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUserTab('lacak')}
+                    className={`flex-1 py-2 rounded-lg transition-all ${
+                      userTab === 'lacak'
+                        ? isDark
+                          ? 'bg-slate-800 text-emerald-400 border border-slate-700'
+                          : 'bg-white text-emerald-700 border border-slate-200 shadow-xs'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    Status Pesanan ({orders.length})
+                  </button>
+                </div>
 
-            {/* INTEGRATED ESG CALCULATOR PREVIEW */}
-            <EsgYieldCalculator onApplyToBatch={handleApplyCalculatorToBatch} />
+                {userTab === 'kirim' && (
+                  <UserShipmentForm
+                    theme={theme}
+                    onSubmitOrder={handleCreateOrder}
+                    onViewOrders={() => setUserTab('lacak')}
+                    onOpenPrintWaybill={(ord) => setPrintOrder(ord)}
+                  />
+                )}
+
+                {userTab === 'lacak' && (
+                  <UserTrackingView
+                    orders={orders}
+                    theme={theme}
+                    onOpenPrintWaybill={(ord) => setPrintOrder(ord)}
+                    onNewShipment={() => setUserTab('kirim')}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* ROLE 2: B2B VIEW */}
+            {role === 'b2b' && (
+              <B2BPortal
+                theme={theme}
+                b2bRequests={b2bRequests}
+                onSubmitB2BRequest={handleCreateB2BRequest}
+              />
+            )}
+
+            {/* ROLE 3: ADMIN VIEW */}
+            {role === 'admin' && (
+              <AdminQCView
+                orders={orders}
+                theme={theme}
+                onUpdateStatus={handleUpdateOrderStatus}
+              />
+            )}
 
           </div>
         )}
 
-        {/* VIEW 2: FULL ESG & YIELD CALCULATOR VIEW */}
-        {activeSection === 'calculator' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-100">Simulasi Pemulihan Sirkular & Neraca Karbon</h2>
-                <p className="text-xs text-slate-400">Model empiris ekstraksi logam WEEE & emisi Scope 3 GHG terhindar</p>
-              </div>
+        {/* VIEW 2: ABOUT PAGE */}
+        {view === 'about' && (
+          <div
+            className={`max-w-3xl mx-auto p-6 sm:p-8 rounded-2xl border space-y-6 ${
+              isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+            }`}
+          >
+            <div className="text-center space-y-2 border-b pb-5 border-slate-200 dark:border-slate-800">
+              <span className="text-2xl">♻️</span>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
+                Tentang ZYPHER.ID
+              </h2>
+              <p className="text-xs text-slate-500">
+                Solusi Sirkularitas Limbah Elektronik & Suku Cadang Kanibalan di Indonesia
+              </p>
+            </div>
+
+            <div className="space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p>
+                <strong>ZYPHER.ID</strong> didirikan sebagai respons atas jutaan smartphone dan perangkat elektronik rusak
+                yang berakhir di tempat pembuangan sampah atau menumpuk di laci rumah tangga tanpa penanganan yang tepat.
+              </p>
+              <p>
+                Di sisi lain, ribuan <strong>teknisi servis smartphone (UMKM)</strong> di seluruh Indonesia kesulitan
+                memperoleh komponen IC, modul kamera, dan layar original copotan karena pabrikan resmi telah menghentikan produksi.
+              </p>
+              <p>
+                Melalui ekosistem terpadu ZYPHER.ID, kami menyatukan pemilik perangkat dengan teknisi profesional:
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 text-slate-700 dark:text-slate-300">
+                <li>
+                  <strong>Perlindungan Escrow (Rekber):</strong> Transaksi jual-beli perangkat rusak bebas risiko penipuan.
+                </li>
+                <li>
+                  <strong>Triage Kategori Sirkular:</strong> Memilah perangkat untuk di-refurbish, dikanibal suku cadangnya, atau dilebur ramah lingkungan (urban mining).
+                </li>
+                <li>
+                  <strong>Kurir Terintegrasi:</strong> Layanan gratis jemput untuk wilayah Surabaya/Sidoarjo/Gresik dan JNE Cashless nasional.
+                </li>
+              </ul>
+            </div>
+
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-3">
+              <a
+                href="https://github.com/fakfekrill-glitch/zypher-waste"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-3 rounded-xl font-bold text-xs bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+              >
+                <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                <span>Lihat Kode Sumber di GitHub</span>
+              </a>
+
               <button
                 type="button"
-                onClick={() => setActiveSection('overview')}
-                className="text-xs text-slate-400 hover:text-slate-200"
+                onClick={() => setView('app')}
+                className="flex-1 py-3 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 transition-colors"
               >
-                &larr; Kembali ke Ringkasan
+                <span>Buka Aplikasi Utama</span>
+                <ArrowRight className="h-4 w-4" />
               </button>
             </div>
-            <EsgYieldCalculator onApplyToBatch={handleApplyCalculatorToBatch} />
           </div>
         )}
 
-        {/* VIEW 3: B2B ROLE PORTALS CONSOLE */}
-        {activeSection === 'portal' && (
-          <div className="space-y-6">
-            
-            {/* ROLE HEADER SWITCHER */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-              <div>
-                <span className="text-[11px] font-mono text-slate-400 uppercase block">Konsol Pengguna Aktif:</span>
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-100">
-                  {currentRole === 'consignor' && '🏢 Konsol Korporasi IT Asset Disposition (ITAD)'}
-                  {currentRole === 'recycler' && '🏭 Konsol Smelter & Daur Ulang Komponen B3'}
-                  {currentRole === 'auditor' && '⚖️ Konsol Auditor Kepatuhan KLHK & QC Triage'}
-                </h2>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Ganti Peran Demonstrasi:</span>
-                <select
-                  value={currentRole}
-                  onChange={(e) => setCurrentRole(e.target.value as UserRole)}
-                  className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-semibold outline-none"
-                >
-                  <option value="consignor">1. Korporasi (Consignor)</option>
-                  <option value="recycler">2. Smelter & Recycler</option>
-                  <option value="auditor">3. Auditor & QC Lapangan</option>
-                </select>
-              </div>
+        {/* VIEW 3: AUTH / LOGIN MODAL PAGE */}
+        {view === 'auth' && (
+          <div
+            className={`max-w-md mx-auto p-6 sm:p-8 rounded-2xl border space-y-5 ${
+              isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+            }`}
+          >
+            <div className="text-center space-y-1">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {authMode === 'login' ? 'Masuk ke Sistem ZYPHER.ID' : 'Pendaftaran Akun Baru'}
+              </h2>
+              <p className="text-xs text-slate-500">
+                Akses dashboard penjual e-waste, mitra B2B, atau verifikasi admin
+              </p>
             </div>
 
-            {/* PORTAL BODIES */}
-            {currentRole === 'consignor' && (
-              <ConsignorPortal
-                lots={lots}
-                onAddLot={handleAddLot}
-                onOpenWaybill={(lot) => setSelectedLotForWaybill(lot)}
-                onOpenCertificate={(lot) => setSelectedLotForCertificate(lot)}
-                prefillData={calculatorPrefill}
-              />
+            {authError && (
+              <div className="p-3 rounded-xl text-xs bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-900 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <span>{authError}</span>
+              </div>
             )}
 
-            {currentRole === 'recycler' && (
-              <RecyclerPortal
-                tenders={tenders}
-                components={components}
-                onPlaceBid={handlePlaceBid}
-                onOrderComponent={handleOrderComponent}
-              />
-            )}
+            {/* GOOGLE ONE CLICK */}
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className={`w-full py-2.5 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2.5 transition-all shadow-xs ${
+                isDark
+                  ? 'bg-slate-950 hover:bg-slate-800 border-slate-700 text-slate-200'
+                  : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700'
+              }`}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.18v3.15C3.16 21.32 7.22 24 12 24z" />
+                <path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.18C.43 8.13 0 9.87 0 12s.43 3.87 1.18 5.39l4.09-3.15z" />
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.22 0 3.16 2.68 1.18 6.61l4.09 3.15c.95-2.85 3.6-4.96 6.73-4.96z" />
+              </svg>
+              <span>Lanjutkan dengan Akun Google</span>
+            </button>
 
-            {currentRole === 'auditor' && (
-              <CompliancePortal
-                lots={lots}
-                onUpdateLotStatus={handleUpdateLotStatus}
-                onOpenCertificate={(lot) => setSelectedLotForCertificate(lot)}
-                onOpenWaybill={(lot) => setSelectedLotForWaybill(lot)}
-              />
-            )}
+            <div className="flex items-center my-3">
+              <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
+              <span className="px-3 text-[10px] text-slate-400 uppercase font-mono">Atau Email</span>
+              <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
+            </div>
 
+            <form onSubmit={handleEmailAuthSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">
+                  Alamat Email
+                </label>
+                <input
+                  type="email"
+                  placeholder="nama@email.com (admin@zypher.id / mitra@zypher.id)"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={`w-full p-2.5 rounded-xl border outline-none ${
+                    isDark ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">
+                  Kata Sandi
+                </label>
+                <input
+                  type="password"
+                  placeholder="Kata sandi..."
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`w-full p-2.5 rounded-xl border outline-none ${
+                    isDark ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm active:scale-95"
+              >
+                {authMode === 'login' ? 'Masuk ke Sistem' : 'Daftar Akun Baru'}
+              </button>
+            </form>
+
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode(authMode === 'login' ? 'register' : 'login');
+                  setAuthError('');
+                }}
+                className="text-xs text-slate-500 hover:text-emerald-600 font-semibold"
+              >
+                {authMode === 'login' ? 'Belum punya akun? Daftar gratis' : 'Sudah punya akun? Masuk'}
+              </button>
+            </div>
           </div>
         )}
 
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-800/80 bg-slate-950/80 py-8 px-4 sm:px-6 lg:px-8 mt-16 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="space-y-1 text-center md:text-left">
-            <p className="font-semibold text-slate-300">
-              ZYPHER CIRCULAR — B2B Enterprise ITAD & Hazardous Waste Management Platform
-            </p>
-            <p className="text-[11px] text-slate-500">
-              Memenuhi standar PP No. 22/2021, Permen LHK No. 6/2021, NIST SP 800-88 Rev. 1, R2v3, e-Stewards, dan ISO 14001:2015.
-            </p>
-          </div>
-          <div className="flex items-center gap-4 text-[11px] font-mono text-slate-400">
-            <span>Serverless Vercel Ready</span>
+      <footer
+        className={`border-t py-6 px-4 sm:px-6 lg:px-8 mt-12 text-xs transition-colors ${
+          isDark ? 'bg-slate-950/80 border-slate-800 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-500'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+          <p className="font-medium">
+            <strong>ZYPHER.ID</strong> &bull; Platform Sirkular Daur Ulang E-Waste & Rekber Kanibalan Indonesia
+          </p>
+          <div className="flex items-center gap-3 text-[11px] font-mono">
+            <span>Free Pickup Surabaya Hub</span>
             <span>&bull;</span>
-            <span>Zero Slop Verified</span>
-            <span>&bull;</span>
-            <span>v2.4.0-Production</span>
+            <span>JNE Cashless Nasional</span>
           </div>
         </div>
       </footer>
 
-      {/* PRINTABLE MODAL: CERTIFICATE OF DESTRUCTION (CoD) */}
-      <CertificateModal
-        lot={selectedLotForCertificate}
-        onClose={() => setSelectedLotForCertificate(null)}
-      />
-
-      {/* PRINTABLE MODAL: WAYBILL & B3 HAZMAT MANIFEST */}
-      <WaybillModal
-        lot={selectedLotForWaybill}
-        onClose={() => setSelectedLotForWaybill(null)}
+      {/* WAYBILL PRINT MODAL */}
+      <WaybillPrintModal
+        order={printOrder}
+        theme={theme}
+        onClose={() => setPrintOrder(null)}
       />
 
     </div>

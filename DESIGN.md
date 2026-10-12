@@ -1,28 +1,37 @@
-# DESIGN.md — Zypher Circular B2B E-Waste OS
+# DESIGN.md — ZYPHER.ID Sirkular E-Waste & Kanibalan Rekber
 
 ## 1. Product Identity
-- **Name:** Zypher Circular (B2B E-Waste & Enterprise ITAD Operating System)
-- **Domain:** Enterprise IT Asset Disposition (ITAD), Certified E-Waste Recycling, Hazardous Waste (Limbah B3) Compliance, and NIST SP 800-88 Serialized Data Destruction.
-- **Audience:** Enterprise Consignors (Banks, Telcos, Data Centers, Corporations), Certified Recyclers & Smelters (Fasilitas Pengolah B3 Berizin), and Compliance/ESG Auditors.
-- **Positioning:** Industrial-grade circularity infrastructure with verifiable chain-of-custody, live urban mining commodity yields, transparent escrow, and legal ESG Scope 3 compliance.
+- **Name:** ZYPHER.ID
+- **Domain:** Ekosistem Sirkular Daur Ulang E-Waste & Marketplace Suku Cadang Kanibalan Elektronik (Handphone, Tablet, Laptop, PCB & Baterai).
+- **Core Value:** Mengubah HP rusak / mati total (matot) menjadi rupiah secara aman melalui Rekber Escrow terpercaya, menyuplai komponen kanibalan original (IC, LCD, modul kamera) untuk teknisi servis B2B, serta mengalokasikan limbah sisa ke fasilitas daur ulang logam.
+- **Audience:**
+  1. *User / Pemilik Gadget:* Masyarakat & konter servis kecil yang ingin menjual HP rusak tanpa tertipu.
+  2. *Mitra Teknisi B2B:* Teknisi & bengkel servis HP yang membutuhkan pasokan part copotan original.
+  3. *Admin Gudang QC:* Pengelola inspeksi fisik, video unboxing WhatsApp, alokasi triage, dan pencairan dana Rekber.
 
-## 2. Personality & Voice
-- **Tone:** Technical, verifiable, legally grounded, utilitarian.
-- **Language:** Honest domain terminology (ITAD, Triage Grade A/B/C, PCB hydrometallurgy, NIST SP 800-88 Purge/Clear, Festronik KLHK, LBMA/LME spot pricing, Scope 3 GHG avoidance).
-- **Anti-Slop Filter:** No fake metrics ("10,000% synergy"), no generic sparkle pills, no empty buzzwords ("revolutionary paradigm"). Every interactive element performs actual state changes or mathematical computations.
+## 2. Palette & Theme Modes (Light & Dark)
+Sesuai arahan anti-slop R-21, platform menyediakan **Mode Terang (Light Mode)** sebagai tampilan utama yang segar dan ramah mata, serta **Mode Gelap (Dark Mode)** yang elegan.
 
-## 3. Visual Palette
-- **Obsidian / Carbon Base:** `#090D16` (canvas), `#0F172A` (elevated cards), `#1E293B` (stroke/dividers)
-- **Primary Circular Accent:** `#10B981` (Emerald-500) & `#059669` (Emerald-600) — used exclusively for verified recycling status, certified carbon avoidance, and validated transactions.
-- **HazMat / B3 Warning:** `#F59E0B` (Amber-500) — used for hazardous lithium/mercury warnings, pending QC triage, and uninspected custody manifests.
-- **Custody & Forensic Integrity:** `#38BDF8` (Sky-400) & `#2563EB` (Blue-600) — used for serialized tracking, QR manifests, and data wipe verification.
-- **Typography Neutral:** `#F8FAFC` (primary text), `#94A3B8` (secondary), `#64748B` (caption/mono labels).
+### Mode Terang (Light Mode - Default)
+- **Canvas / Background:** `#F8FAFC` (Slate-50) & `#F1F5F9` (Slate-100)
+- **Card Surfaces:** `#FFFFFF` (Pure White) dengan border halus `#E2E8F0` (Slate-200)
+- **Aksen Utama (Circular Green):** `#059669` (Emerald-600) & `#10B981` (Emerald-500)
+- **Aksen B2B & Komponen:** `#D97706` (Amber-600)
+- **Aksen Status & Tracking:** `#0284C7` (Sky-600)
+- **Tipografi:** `#0F172A` (Slate-900 / kontras tajam) & `#475569` (Slate-600)
 
-## 4. Typography & Data Presentation
-- **Headings & Body:** Geist Sans (clean, high legibility at micro sizes).
-- **Technical & Tabular:** Geist Mono (`tabular-nums`, uppercase identifiers for Lot IDs `LOT-2026-X8`, Resi, Manifest Hashes, NIST Sanitization Records, and commodity yields).
+### Mode Gelap (Dark Mode)
+- **Canvas / Background:** `#090D16` (Deep Carbon Obsidian)
+- **Card Surfaces:** `#0F172A` (Slate-900) dengan border `#1E293B`
+- **Aksen Terang:** `#10B981` (Emerald), `#F59E0B` (Amber), `#38BDF8` (Sky)
+- **Tipografi:** `#F8FAFC` (Slate-50) & `#94A3B8` (Slate-400)
 
-## 5. Liveliness Dials & Motion
-- **ENERGY: 3** — Dynamic live recalculations, interactive material extraction models, responsive tab switching.
-- **RHYTHM: 3** — Rich structural variety: enterprise metrics strip, interactive visual chain-of-custody pipeline, real-time commodity ticker, multi-portal consoles, and verifiable Certificate of Destruction dialogs.
-- **MOTION: 3** — Purposeful SVG flow animations (chain of custody pulses), smooth micro-interactions, modal backdrops, and active badge pulses.
+## 3. Motion & Animations
+- **Circuit Flow Animation:** Garis sirkuit beranimasi dinamis pada hero alur sirkular e-waste (`animate-circuit-flow`).
+- **Pulsing Status Indicators:** Indikator tahapan status pengiriman (`animate-pulse-gentle`) pada pesanan aktif.
+- **Micro-Interactions:** Transisi perpindahan tab tanpa reload, kalkulator kiloan live, kompresi foto otomatis di peramban, dan preview waybill cetak.
+- **Light/Dark Toggle:** Transisi rotasi ikon matahari dan bulan yang halus.
+
+## 4. Anti-Slop Integrity
+- **Kejujuran Data & Fitur:** Tidak ada fitur hiasan atau tombol dummy. Setiap formulir, upload foto, pemilihan kurir GPS, kalkulasi harga borongan, dan cetak lembar waybill berfungsi penuh.
+- **Bahasa Domain Asli:** Menggunakan istilah operasional teknisi dan daur ulang riil di Indonesia (*Matot, Kanibal IC, Polarizer LCD, Jumper, Urban Mining, Rekber Escrow, JNE Cashless*).
