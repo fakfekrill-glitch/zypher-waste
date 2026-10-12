@@ -34,7 +34,7 @@ type Order = {
 };
 
 type PhotoData = { file: File; preview: string; };
-type B2BRequest = { id: string; reqId: string; tipe: string; volume: string; status: string; };
+type B2BRequest = { id: string; reqId: string; tipe: string; volume: string; status: string; price?: number; buyerName?: string; createdAt?: string; };
 
 const marketDatabase: string[] = [
   "Poco X3 Pro", "Poco X3 NFC", "Poco X4 Pro / X5 Pro", "Poco F3 / F4 / F5", "Poco M3 / M4 Pro / M5",
@@ -45,6 +45,14 @@ const marketDatabase: string[] = [
   "Samsung Galaxy A14 / A13", "Oppo Reno 8 / 10", "Oppo A58 / A78", "Vivo V27 / V29", "Vivo Y36",
   "Realme 10 / 11 Pro", "Realme C55", "Asus ROG Phone 5 / 6 / 7", "MacBook Pro / Air (M1/M2/M3)",
   "Laptop Lenovo / HP / Asus / Acer (Umum)"
+];
+
+// 🟢 KATALOG KOMPONEN B2B (MAKELAR SERVIS / KANIBAL PART)
+const b2bCatalogItems = [
+  { id: 'c1', name: 'Bundle LCD Pecah (Grade A Service)', stock: '45 Pcs', price: 120000, desc: 'Cocok untuk diambil kaca polarizer / fleksibel.' },
+  { id: 'c2', name: 'Bundle LCD Garis / Shadow Tipis', stock: '28 Pcs', price: 175000, desc: 'Tampilan masih menyala, touch screen normal.' },
+  { id: 'c3', name: 'Mesin Kanibalan Cabutan (Poco / Xiaomi)', stock: '12 Pcs', price: 250000, desc: 'IC PMIC / CPU utuh untuk bahan jumper teknisi.' },
+  { id: 'c4', name: 'Modul Kamera Set Cabutan Original', stock: '30 Pcs', price: 95000, desc: 'Kamera depan & belakang copotan mulus.' }
 ];
 
 export default function ZypherSuperApp() {
@@ -69,7 +77,7 @@ export default function ZypherSuperApp() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [b2bRequests, setB2bRequests] = useState<B2BRequest[]>([]);
   
-  const [activeTabAdmin, setActiveTabAdmin] = useState<'qc' | 'inventory'>('qc');
+  const [activeTabAdmin, setActiveTabAdmin] = useState<'qc' | 'inventory' | 'b2b_orders'>('qc');
   const [activeTabB2B, setActiveTabB2B] = useState<'katalog' | 'borongan' | 'histori'>('katalog');
   const [activeTabUser, setActiveTabUser] = useState<'kirim' | 'lacak'>('kirim');
   const [step, setStep] = useState(1);
@@ -87,6 +95,10 @@ export default function ZypherSuperApp() {
   const [payoutAccount, setPayoutAccount] = useState('');
   const [lastResi, setLastResi] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // B2B Borongan Form
+  const [b2bMaterial, setB2bMaterial] = useState('PCB Campur');
+  const [b2bVolume, setB2bVolume] = useState('');
 
   // Verifikasi Email Firebase
   const [isEmailVerifiedStep, setIsEmailVerifiedStep] = useState(false);
@@ -360,6 +372,58 @@ export default function ZypherSuperApp() {
     finally { setIsSubmitting(false); }
   };
 
+  // 🟢 FUNGSI ORDER B2B / MAKELAR SERVIS PART
+  const handleOrderB2BItem = async (item: typeof b2bCatalogItems[0]) => {
+    try {
+      showToast(`Memesan ${item.name}...`);
+      const reqId = 'B2B-' + Math.floor(100000 + Math.random() * 900000);
+      const b2bData = {
+        reqId: reqId,
+        tipe: item.name,
+        volume: '1 Paket (' + item.stock + ')',
+        status: 'Menunggu Konfirmasi Gudang',
+        price: item.price,
+        buyerName: email || 'Mitra Teknisi',
+        createdAt: new Date().toISOString()
+      };
+
+      const newB2bRef = push(ref(database, 'b2b_requests'));
+      await set(newB2bRef, b2bData);
+      
+      sendTextToDiscord(`[B2B ORDER] Mitra memesan part: \`${item.name}\` seharga Rp ${item.price.toLocaleString('id-ID')}`);
+      showToast("✅ Berhasil memesan part B2B!");
+      setActiveTabB2B('histori');
+    } catch (err) {
+      showToast("Gagal memesan part.");
+    }
+  };
+
+  const handleB2bBoronganSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!b2bVolume) { showToast("Masukkan total volume dalam Kg."); return; }
+    try {
+      showToast("Mengajukan borongan...");
+      const reqId = 'BOR-' + Math.floor(100000 + Math.random() * 900000);
+      const b2bData = {
+        reqId: reqId,
+        tipe: b2bMaterial,
+        volume: b2bVolume + ' Kg',
+        status: 'Menunggu Penawaran Admin',
+        buyerName: email || 'Mitra Korporasi',
+        createdAt: new Date().toISOString()
+      };
+
+      const newB2bRef = push(ref(database, 'b2b_requests'));
+      await set(newB2bRef, b2bData);
+
+      showToast("✅ Pengajuan borongan berhasil dikirim!");
+      setB2bVolume('');
+      setActiveTabB2B('histori');
+    } catch (err) {
+      showToast("Gagal mengajukan borongan.");
+    }
+  };
+
   const updateOrderStatus = async (dbKey: string, newStatus: string, triageVal?: string) => {
     try {
       const updateData: any = { status: newStatus };
@@ -431,7 +495,7 @@ export default function ZypherSuperApp() {
                 Sustainable Electronic Recycling & Escrow Network
               </h2>
               <p className="text-slate-400 text-xs leading-relaxed">
-                Empowering the circular economy through certified B3 electronic waste management, automated escrow verification, and enterprise-grade security.
+                Empowering the circular economy through certified B3 electronic waste management, automated escrow verification, and spare parts marketplace for technicians.
               </p>
 
               <div className="pt-2">
@@ -856,32 +920,79 @@ export default function ZypherSuperApp() {
               </div>
             )}
 
-            {/* PORTAL B2B */}
+            {/* PORTAL B2B (MAKELAR SERVIS / KANIBAL PART & BORONGAN) */}
             {role === 'b2b' && (
               <div className="space-y-4">
                 <div className="flex bg-slate-900 rounded-lg p-1 mb-4 border border-slate-800">
-                  <button type="button" onClick={() => setActiveTabB2B('katalog')} className={`flex-1 py-2 rounded text-xs font-semibold touch-manipulation ${activeTabB2B === 'katalog' ? 'bg-slate-800 text-slate-100' : 'text-slate-400'}`}>Katalog Komponen</button>
-                  <button type="button" onClick={() => setActiveTabB2B('borongan')} className={`flex-1 py-2 rounded text-xs font-semibold touch-manipulation ${activeTabB2B === 'borongan' ? 'bg-slate-800 text-slate-100' : 'text-slate-400'}`}>Pengajuan Borongan</button>
+                  <button type="button" onClick={() => setActiveTabB2B('katalog')} className={`flex-1 py-2 rounded text-[11px] font-semibold touch-manipulation ${activeTabB2B === 'katalog' ? 'bg-slate-800 text-slate-100' : 'text-slate-400'}`}>Katalog Komponen (Part)</button>
+                  <button type="button" onClick={() => setActiveTabB2B('borongan')} className={`flex-1 py-2 rounded text-[11px] font-semibold touch-manipulation ${activeTabB2B === 'borongan' ? 'bg-slate-800 text-slate-100' : 'text-slate-400'}`}>Borongan Limbah</button>
+                  <button type="button" onClick={() => setActiveTabB2B('histori')} className={`flex-1 py-2 rounded text-[11px] font-semibold touch-manipulation ${activeTabB2B === 'histori' ? 'bg-slate-800 text-slate-100' : 'text-slate-400'}`}>Pesanan Saya</button>
                 </div>
 
                 {activeTabB2B === 'katalog' && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl space-y-2">
-                      <h4 className="font-semibold text-xs text-slate-200">Modul Kamera Set</h4>
-                      <p className="text-emerald-400 font-bold text-xs">Rp 350.000</p>
-                      <button type="button" onClick={() => showToast("Permintaan komponen dicatat.")} className="w-full bg-slate-800 text-slate-200 border border-slate-700 py-1.5 rounded text-[11px] font-medium touch-manipulation">Pesan</button>
+                  <div className="space-y-3">
+                    <p className="text-[11px] text-slate-400">Pilih komponen cabutan / kanibal untuk kebutuhan servis:</p>
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {b2bCatalogItems.map((item) => (
+                        <div key={item.id} className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl flex justify-between items-center">
+                          <div className="space-y-1">
+                            <h4 className="font-semibold text-xs text-slate-200">{item.name}</h4>
+                            <p className="text-[10px] text-slate-400">{item.desc}</p>
+                            <p className="text-emerald-400 font-bold text-xs">Rp {item.price.toLocaleString('id-ID')} <span className="text-[10px] text-slate-500 font-normal">({item.stock})</span></p>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => handleOrderB2BItem(item)} 
+                            className="bg-slate-100 text-slate-950 px-3 py-2 rounded font-semibold text-[11px] active:scale-95 touch-manipulation flex-shrink-0"
+                          >
+                            Pesan Part
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
 
                 {activeTabB2B === 'borongan' && (
-                  <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
-                    <select className="w-full bg-slate-950 p-2.5 rounded border border-slate-800 text-xs text-slate-200 outline-none" id="b2b-type">
-                      <option value="PCB Campur">Material: PCB Campur</option>
-                      <option value="Baterai Lithium">Material: Baterai Lithium Borongan</option>
-                    </select>
-                    <input type="text" inputMode="numeric" placeholder="Total Volume (Kg)" className="w-full p-2.5 rounded bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none" />
-                    <button type="button" onClick={() => showToast("Pengajuan borongan dikirim.")} className="w-full bg-slate-100 text-slate-950 py-2.5 rounded font-semibold text-xs touch-manipulation">Ajukan Mitra Korporasi</button>
+                  <form onSubmit={handleB2bBoronganSubmit} className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+                    <h4 className="font-semibold text-xs text-slate-200">Ajukan Borongan Material E-Waste</h4>
+                    <div>
+                      <label className="text-[10px] text-slate-400 mb-1 block">Kategori Material</label>
+                      <select className="w-full bg-slate-950 p-2.5 rounded border border-slate-800 text-xs text-slate-200 outline-none" value={b2bMaterial} onChange={(e) => setB2bMaterial(e.target.value)}>
+                        <option value="PCB Campur">PCB Campur (Motherboard Handphone/Laptop)</option>
+                        <option value="Baterai Lithium">Baterai Lithium Borongan</option>
+                        <option value="LCD Reject Servis">LCD Reject Servis (Kondisi Pecah/Garis)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 mb-1 block">Estimasi Volume (Kg)</label>
+                      <input 
+                        type="text" 
+                        inputMode="numeric"
+                        placeholder="Contoh: 150" 
+                        value={b2bVolume} 
+                        onChange={(e) => setB2bVolume(e.target.value.replace(/\D/g, ''))} 
+                        className="w-full p-2.5 rounded bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none" 
+                        required 
+                      />
+                    </div>
+                    <button type="submit" className="w-full bg-slate-100 text-slate-950 py-2.5 rounded font-semibold text-xs touch-manipulation">Kirim Pengajuan Borongan</button>
+                  </form>
+                )}
+
+                {activeTabB2B === 'histori' && (
+                  <div className="space-y-2.5">
+                    {b2bRequests.length === 0 ? <p className="text-center text-slate-500 text-xs mt-10">Belum ada pesanan komponen/borongan.</p> : b2bRequests.map(req => (
+                      <div key={req.id} className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl text-xs space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <span className="font-mono font-bold text-slate-300">{req.reqId}</span>
+                          <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">{req.status}</span>
+                        </div>
+                        <p className="font-semibold text-slate-200">{req.tipe}</p>
+                        <p className="text-[11px] text-slate-400">Volume/Jumlah: <span className="text-slate-200">{req.volume}</span></p>
+                        {req.price && <p className="text-[11px] text-emerald-400 font-bold">Total: Rp {req.price.toLocaleString('id-ID')}</p>}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
