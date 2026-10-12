@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ThemeMode } from '../types';
-import { ShieldCheck, Lock, AlertCircle, Sparkles, LogIn } from 'lucide-react';
+import { ShieldCheck, Lock, ArrowLeft, AlertCircle, Mail, KeyRound } from 'lucide-react';
 
 interface AdminLoginGatewayProps {
   theme: ThemeMode;
@@ -16,33 +16,36 @@ export const AdminLoginGateway: React.FC<AdminLoginGatewayProps> = ({
   onBackToUser,
 }) => {
   const isDark = theme === 'dark';
-  const [email, setEmail] = useState<string>('admin@zypher.id');
-  const [password, setPassword] = useState<string>('admin123');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleManualLogin = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+    setIsLoading(true);
 
     const cleanEmail = email.trim().toLowerCase();
-    if (cleanEmail === 'admin@zypher.id' || cleanEmail.includes('admin')) {
-      if (password === 'admin123' || password === 'ZYPHER27') {
-        onLoginSuccess(cleanEmail, 'Admin Gudang Pusat QC & Escrow');
+    
+    // Simulate slight auth verification
+    setTimeout(() => {
+      setIsLoading(false);
+      if (cleanEmail === 'admin@zypher.id' || cleanEmail.includes('admin')) {
+        if (password === 'admin123' || password === 'ZYPHER27') {
+          onLoginSuccess(cleanEmail, 'Admin Gudang Pusat QC & Escrow');
+          return;
+        }
+        setErrorMsg('Kata sandi otorisasi admin salah. Silakan periksa kembali.');
         return;
       }
-      setErrorMsg('Kata sandi admin salah. Gunakan: admin123');
-      return;
-    }
 
-    setErrorMsg('Akses ditolak: Hanya email admin terdaftar yang diizinkan (admin@zypher.id).');
-  };
-
-  const handleQuickDemoLogin = () => {
-    onLoginSuccess('admin@zypher.id', 'Kepala QC Gudang Pusat ZYPHER.ID');
+      setErrorMsg('Akses ditolak: Alamat email tidak memiliki izin administratif.');
+    }, 300);
   };
 
   return (
-    <div className="max-w-md mx-auto my-6 p-6 sm:p-8 rounded-3xl border space-y-6 shadow-sm transition-all duration-300 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+    <div className="max-w-md mx-auto my-8 p-6 sm:p-8 rounded-3xl border space-y-6 shadow-sm transition-all duration-300 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
       
       {/* HEADER BADGE */}
       <div className="text-center space-y-2">
@@ -57,94 +60,87 @@ export const AdminLoginGateway: React.FC<AdminLoginGatewayProps> = ({
             Konsol Otoritas Admin Gudang & Escrow
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-400">
-            Otoritas inspeksi unboxing fisik, penetapan alur triage sirkular, dan pelepasan dana Rekber.
+            Sistem internal ZYPHER.ID khusus petugas QC untuk inspeksi unboxing fisik, penetapan alur triage kanibal, dan pelepasan dana Rekber.
           </p>
         </div>
       </div>
 
       {errorMsg && (
-        <div className="p-3 rounded-xl text-xs bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-900 flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+        <div className="p-3.5 rounded-xl text-xs bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900 flex items-center gap-2.5 animate-shake">
+          <AlertCircle className="h-4 w-4 flex-shrink-0 text-rose-600" />
           <span>{errorMsg}</span>
         </div>
       )}
 
-      {/* QUICK DEMO ACCESS FOR JURI HACKATHON */}
-      <div className="p-3.5 rounded-2xl border border-sky-200 dark:border-sky-900/60 bg-sky-50/60 dark:bg-sky-950/30 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-bold text-sky-900 dark:text-sky-300 flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-sky-600" />
-            <span>Akses Cepat Pengujian Juri Hackathon</span>
-          </span>
-          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-sky-200 dark:bg-sky-900 text-sky-900 dark:text-sky-200 font-bold">
-            1-Klik
-          </span>
-        </div>
-        <p className="text-[10px] text-slate-600 dark:text-slate-400">
-          Akun admin: <strong className="font-mono text-slate-900 dark:text-slate-200">admin@zypher.id</strong> / Kata sandi: <strong className="font-mono text-slate-900 dark:text-slate-200">admin123</strong>
-        </p>
-        <button
-          type="button"
-          onClick={handleQuickDemoLogin}
-          className="w-full py-2.5 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-98"
-        >
-          <LogIn className="h-3.5 w-3.5" />
-          <span>Masuk Instan sebagai Admin Gudang</span>
-        </button>
-      </div>
-
-      <div className="flex items-center my-2">
-        <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
-        <span className="px-3 text-[10px] text-slate-400 uppercase font-mono">Atau Kredensial Khusus</span>
-        <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
-      </div>
-
-      {/* MANUAL ADMIN LOGIN FORM */}
-      <form onSubmit={handleManualLogin} className="space-y-3.5 text-xs">
-        <div>
-          <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-            Email Administrator ZYPHER.ID
+      {/* ADMIN LOGIN FORM */}
+      <form onSubmit={handleLogin} className="space-y-4 text-xs">
+        <div className="space-y-1.5">
+          <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <Mail className="h-3.5 w-3.5 text-slate-400" />
+            <span>Email Administrator ZYPHER.ID</span>
           </label>
           <input
             type="email"
             placeholder="admin@zypher.id"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-2.5 rounded-xl border text-xs outline-none bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-sky-600"
+            className="w-full p-2.5 rounded-xl border text-xs outline-none bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-sky-600 focus:ring-1 focus:ring-sky-500/20 transition-all"
             required
+            autoComplete="email"
           />
         </div>
 
-        <div>
-          <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-            Kata Sandi Otoritas
+        <div className="space-y-1.5">
+          <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <KeyRound className="h-3.5 w-3.5 text-slate-400" />
+            <span>Kata Sandi Otoritas</span>
           </label>
           <input
             type="password"
-            placeholder="Kata sandi admin..."
+            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-2.5 rounded-xl border text-xs outline-none bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-sky-600"
+            className="w-full p-2.5 rounded-xl border text-xs outline-none bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-sky-600 focus:ring-1 focus:ring-sky-500/20 transition-all"
             required
+            autoComplete="current-password"
           />
+        </div>
+
+        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" className="rounded border-slate-300 text-sky-600 focus:ring-0" defaultChecked />
+            <span>Sesi aman 24 jam</span>
+          </label>
+          <span className="text-sky-600 dark:text-sky-400 hover:underline cursor-pointer">
+            Lupa Kredensial?
+          </span>
         </div>
 
         <button
           type="submit"
-          className="w-full py-3 rounded-xl font-bold bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 text-white dark:text-slate-950 transition-all shadow-sm active:scale-98"
+          disabled={isLoading}
+          className="w-full py-3 rounded-xl font-bold bg-sky-600 hover:bg-sky-700 text-white transition-all shadow-sm active:scale-98 disabled:opacity-60 flex items-center justify-center gap-2 text-xs"
         >
-          Masuk ke Konsol Otoritas Admin
+          {isLoading ? (
+            <span className="inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <>
+              <Lock className="h-3.5 w-3.5" />
+              <span>Masuk ke Konsol Otoritas Admin</span>
+            </>
+          )}
         </button>
       </form>
 
-      {/* BACK TO USER PORTAL */}
-      <div className="text-center pt-2 border-t border-slate-200 dark:border-slate-800">
+      {/* BACK TO PUBLIC PORTAL */}
+      <div className="text-center pt-3 border-t border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onClick={onBackToUser}
-          className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-semibold inline-flex items-center gap-1 transition-colors"
+          className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-semibold inline-flex items-center gap-1.5 transition-colors"
         >
-          <span>&larr; Kembali ke Portal Penjual HP (User)</span>
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Kembali ke Portal Penjual HP (User)</span>
         </button>
       </div>
 

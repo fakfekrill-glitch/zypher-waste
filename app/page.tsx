@@ -168,7 +168,7 @@ export default function ZypherApp() {
     setOrders(ZypherBackendService.getCachedOrders());
     setB2bRequests(ZypherBackendService.getCachedB2BRequests());
     setCatalogItems(ZypherBackendService.getCachedCatalog());
-    showToast('Data pengujian juri berhasil di-reset ke kondisi awal!');
+    showToast('Data simulasi berhasil di-reset ke kondisi awal!');
   };
 
   // ROLE SESSION HELPERS

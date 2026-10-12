@@ -169,11 +169,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
-            {/* RESET BUTTON FOR DEMO */}
+            {/* RESET BUTTON */}
             <button
               type="button"
               onClick={onResetData}
-              title="Reset data demonstrasi juri"
+              title="Reset data simulasi"
               className={`p-2 rounded-xl border transition-colors ${
                 isDark
                   ? 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
