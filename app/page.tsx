@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 
 // === FIREBASE IMPORTS ===
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, reload } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, reload, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getDatabase, ref, set, push, onValue, update } from 'firebase/database';
 
 // 🟢 CONFIG FIREBASE MILIK ANDA
@@ -21,13 +21,14 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const database = getDatabase(app); 
+const googleProvider = new GoogleAuthProvider();
 
 // === TYPES ===
 type OrderStatus = 'Menunggu Pickup' | 'Tiba di Gudang' | 'Menunggu Persetujuan User' | 'Selesai & Cair' | 'Diretur';
 type Triage = 'Belum Disortir' | 'Refurbish' | 'Kanibal' | 'Urban Mining';
 
 type Order = {
-  id: string; resi: string; nama: string; alamat: string; device: string;
+  id: string; resi: string; nama: string; telepon: string; alamat: string; device: string;
   estimasiAwal: number; hargaFinal: number; status: OrderStatus; triage: Triage;
   isDead: boolean; lcdCondition: string; bodyCondition: string; photos: string[]; 
   courierType?: string; payoutMethod?: string; payoutAccount?: string; createdAt?: string;
@@ -47,7 +48,6 @@ const marketDatabase: string[] = [
   "Laptop Lenovo / HP / Asus / Acer (Umum)"
 ];
 
-// 🟢 KATALOG KOMPONEN B2B (MAKELAR SERVIS / KANIBAL PART)
 const b2bCatalogItems = [
   { id: 'c1', name: 'Bundle LCD Pecah (Grade A Service)', stock: '45 Pcs', price: 120000, desc: 'Cocok untuk diambil kaca polarizer / fleksibel.' },
   { id: 'c2', name: 'Bundle LCD Garis / Shadow Tipis', stock: '28 Pcs', price: 175000, desc: 'Tampilan masih menyala, touch screen normal.' },
@@ -63,7 +63,6 @@ export default function ZypherSuperApp() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   
-  // TOAST NOTIFICATION
   const [toastMsg, setToastMsg] = useState('');
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -73,17 +72,17 @@ export default function ZypherSuperApp() {
   const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1556166513369813018/gJHEJR7jm9Bm0V1bQDZSDrDeGL-QdZSXhvJP_2_m0-YIy6lfVXiqJkt_5AxVqiFPURnU';
   const WA_ADMIN_NUMBER = '6289521430567';
 
-  // State Data
   const [orders, setOrders] = useState<Order[]>([]);
   const [b2bRequests, setB2bRequests] = useState<B2BRequest[]>([]);
   
-  const [activeTabAdmin, setActiveTabAdmin] = useState<'qc' | 'inventory' | 'b2b_orders'>('qc');
+  const [activeTabAdmin, setActiveTabAdmin] = useState<'qc' | 'inventory'>('qc');
   const [activeTabB2B, setActiveTabB2B] = useState<'katalog' | 'borongan' | 'histori'>('katalog');
   const [activeTabUser, setActiveTabUser] = useState<'kirim' | 'lacak'>('kirim');
   const [step, setStep] = useState(1);
   
   // User Form
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [device, setDevice] = useState('Poco X3 Pro');
   const [isDead, setIsDead] = useState(false);
@@ -100,11 +99,9 @@ export default function ZypherSuperApp() {
   const [b2bMaterial, setB2bMaterial] = useState('PCB Campur');
   const [b2bVolume, setB2bVolume] = useState('');
 
-  // Verifikasi Email Firebase
   const [isEmailVerifiedStep, setIsEmailVerifiedStep] = useState(false);
   const [registeredUserObj, setRegisteredUserObj] = useState<any>(null);
 
-  // Cek Jangkauan Kurir
   const [checkInput, setCheckInput] = useState('');
   const [checkResult, setCheckResult] = useState<{ type: 'internal' | 'jne' | null; text: string } | null>(null);
 
@@ -112,7 +109,6 @@ export default function ZypherSuperApp() {
     return input.replace(/[<>]/g, '').trim();
   };
 
-  // --- DATABASE LISTENER ---
   useEffect(() => {
     document.title = "ZYPHER";
     try {
@@ -151,6 +147,21 @@ export default function ZypherSuperApp() {
     } catch (error) {}
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      showToast("Menghubungkan ke Google...");
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      sendTextToDiscord(`[GOOGLE AUTH] Berhasil masuk: ${user.email}`);
+      showToast("Login Google Berhasil!");
+      setRole('user');
+      setView('dashboard');
+    } catch (error: any) {
+      setLoginError(`Gagal Google Auth: ${error.message}`);
+    }
+  };
+
   const handleMultipleImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -171,7 +182,7 @@ export default function ZypherSuperApp() {
               
               const compressedBase64 = canvas.toDataURL('image/jpeg', 0.5);
               setUserPhotos((prev) => [...prev, { file: file, preview: compressedBase64 }]);
-              showToast("Foto terkompresi & aman.");
+              showToast("Foto terkompresi.");
             } catch (err) { showToast("Gagal memproses foto."); }
           };
           img.src = event.target?.result as string;
@@ -186,7 +197,7 @@ export default function ZypherSuperApp() {
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
-    if (password.length < 8) { setLoginError('🛡️ Sandi minimum 8 karakter.'); return; }
+    if (password.length < 8) { setLoginError('Sandi minimum 8 karakter.'); return; }
     try {
       showToast("Mendaftarkan akun...");
       const sanitizedEmail = sanitizeInput(email);
@@ -195,7 +206,7 @@ export default function ZypherSuperApp() {
       
       setRegisteredUserObj(userCredential.user);
       setIsEmailVerifiedStep(true);
-      sendTextToDiscord(`[SECURE AUTH] Verifikasi email dikirim ke: ${sanitizedEmail}`);
+      sendTextToDiscord(`Verifikasi email dikirim ke: ${sanitizedEmail}`);
       showToast('Tautan verifikasi terkirim.');
     } catch (error: any) {
       if (error.code === 'auth/email-already-in-use') setLoginError('Email sudah terdaftar.');
@@ -227,11 +238,11 @@ export default function ZypherSuperApp() {
 
     if (sanitizedEmail === 'admin@zypher.id' || sanitizedEmail.includes('admin')) {
       if (password === 'admin123' || password === 'ZYPHER27') {
-        setRole('admin'); setView('dashboard'); showToast('Sesi Admin Terenkripsi Aktif');
+        setRole('admin'); setView('dashboard'); showToast('Sesi Admin Aktif');
       } else { setLoginError('Autentikasi admin ditolak.'); }
     } else if (sanitizedEmail.includes('b2b') || sanitizedEmail.includes('mitra')) {
       if (password === 'mitra123') {
-        setRole('b2b'); setView('dashboard'); showToast('Sesi B2B Terenkripsi Aktif');
+        setRole('b2b'); setView('dashboard'); showToast('Sesi B2B Aktif');
       } else { setLoginError('Autentikasi mitra ditolak.'); }
     } else {
       try {
@@ -243,7 +254,7 @@ export default function ZypherSuperApp() {
           return;
         }
 
-        setRole('user'); setView('dashboard'); showToast('Autentikasi Berhasil');
+        setRole('user'); setView('dashboard'); showToast('Login Berhasil');
       } catch (error) { setLoginError('Kredensial tidak valid.'); }
     }
   };
@@ -284,7 +295,7 @@ export default function ZypherSuperApp() {
     }
 
     setIsLocating(true);
-    showToast("Mengakses geolokasi aman...");
+    showToast("Mengakses lokasi...");
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -321,7 +332,7 @@ export default function ZypherSuperApp() {
   const [isLocating, setIsLocating] = useState(false);
 
   const handleNextStep = () => {
-    if (!fullName || !address || !expectedPrice || !payoutAccount || userPhotos.length === 0) {
+    if (!fullName || !phone || !address || !expectedPrice || !payoutAccount || userPhotos.length === 0) {
       return showToast("Lengkapi seluruh formulir dengan benar.");
     }
     setStep(2);
@@ -343,7 +354,8 @@ export default function ZypherSuperApp() {
       const compressedPhotosData = userPhotos.map(photo => photo.preview);
       const orderData = {
         resi: newResi, 
-        nama: sanitizeInput(fullName), 
+        nama: sanitizeInput(fullName),
+        telepon: sanitizeInput(phone),
         alamat: sanitizeInput(address), 
         device: sanitizeInput(device),
         estimasiAwal: hargaInt, 
@@ -363,16 +375,15 @@ export default function ZypherSuperApp() {
       const newOrderRef = push(ref(database, 'orders'));
       await set(newOrderRef, orderData);
 
-      const reportMessage = `[SECURE TRANSACTION] Resi: ${newResi} | Pengirim: ${sanitizeInput(fullName)}`;
+      const reportMessage = `[TRANSAKSI] Resi: ${newResi} | Pengirim: ${sanitizeInput(fullName)} | Telp: ${sanitizeInput(phone)}`;
       await sendOrderToDiscordWithPhotos(reportMessage, userPhotos);
 
-      showToast("Transaksi terverifikasi aman.");
+      showToast("Transaksi berhasil dikirim.");
       setStep(3);
     } catch (error: any) { showToast("Gagal menyimpan ke database."); } 
     finally { setIsSubmitting(false); }
   };
 
-  // 🟢 FUNGSI ORDER B2B / MAKELAR SERVIS PART
   const handleOrderB2BItem = async (item: typeof b2bCatalogItems[0]) => {
     try {
       showToast(`Memesan ${item.name}...`);
@@ -442,8 +453,15 @@ export default function ZypherSuperApp() {
   };
 
   const openWhatsApp = () => {
-    const message = encodeURIComponent(`Halo Admin ZYPHER.ID,\nVerifikasi Rekber Aman:\nNama: ${fullName}\nResi: ${lastResi}`);
+    const message = encodeURIComponent(`Halo Admin ZYPHER.ID,\nKonfirmasi Rekber:\nNama: ${fullName}\nResi: ${lastResi}`);
     window.open(`https://wa.me/${WA_ADMIN_NUMBER}?text=${message}`, '_blank');
+  };
+
+  const chatUserWhatsApp = (userPhone: string, userName: string, userResi: string) => {
+    const cleanPhone = userPhone.replace(/\D/g, '');
+    const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+    const msg = encodeURIComponent(`Halo Kak ${userName},\nPaket E-Waste dengan Resi *${userResi}* telah tiba di Gudang Pusat ZYPHER.ID.\n\nBerikut kami undang untuk melakukan video unboxing pemeriksaan fisik perangkat agar proses pencairan dana dapat segera dilanjutkan.`);
+    window.open(`https://wa.me/${formattedPhone}?text=${msg}`, '_blank');
   };
 
   const trackingSteps = [
@@ -495,12 +513,12 @@ export default function ZypherSuperApp() {
                 Sustainable Electronic Recycling & Escrow Network
               </h2>
               <p className="text-slate-400 text-xs leading-relaxed">
-                Empowering the circular economy through certified B3 electronic waste management, automated escrow verification, and spare parts marketplace for technicians.
+                ZYPHER.ID adalah pionir platform logistik limbah elektronik dan jaringan Rekber terintegrasi berbasis B3 di Indonesia. Kami mendedikasikan diri untuk merevolusi tata kelola sirkular ekonomi melalui sistem penjemputan otomatis, verifikasi kualitas transparan, perlindungan dana escrow, serta penyediaan pasar komponen kanibalan dan material daur ulang bagi korporasi dan teknisi profesional secara aman dan berkelanjutan.
               </p>
 
               <div className="pt-2">
                 <button type="button" onClick={() => setView('login')} className="w-full py-3 rounded-lg font-semibold text-xs text-slate-950 bg-slate-100 shadow touch-manipulation active:scale-95 transition-all">
-                  Akses Sistem Aman
+                  Akses Sistem
                 </button>
               </div>
             </div>
@@ -529,7 +547,6 @@ export default function ZypherSuperApp() {
                 <strong>ZYPHER.ID</strong> adalah perusahaan teknologi logistik dan daur ulang elektronik terkemuka yang berfokus pada penanganan limbah B3 secara berkelanjutan. Kami menghubungkan pemilik perangkat bekas, korporasi B2B, dan fasilitas pemrosesan resmi melalui sistem manajemen status pesanan real-time, pencairan dana Rekber terverifikasi, serta pelacakan kurir terpadu yang handal.
               </p>
               
-              {/* GITHUB PROFILE SOURCE CODE DI HALAMAN ABOUT */}
               <div className="pt-2">
                 <a 
                   href="https://github.com/fakfekrill-glitch/zypher-waste" 
@@ -551,8 +568,24 @@ export default function ZypherSuperApp() {
 
         {view === 'login' && (
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm mt-6 space-y-4">
-            <h2 className="text-base font-bold text-slate-100 text-center">Masuk ke Sistem Aman</h2>
+            <h2 className="text-base font-bold text-slate-100 text-center">Masuk ke Sistem</h2>
             {loginError && <div className="bg-rose-950/40 border border-rose-900/50 text-rose-300 text-xs p-3 rounded-lg text-center font-medium">{loginError}</div>}
+            
+            <button 
+              type="button" 
+              onClick={handleGoogleLogin} 
+              className="w-full py-3 rounded-lg font-semibold text-xs text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center gap-2 shadow-sm touch-manipulation active:scale-95 transition-all"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.18v3.15C3.16 21.32 7.22 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.18C.43 8.13 0 9.87 0 12s.43 3.87 1.18 5.39l4.09-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.22 0 3.16 2.68 1.18 6.61l4.09 3.15c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
+              <span>Masuk dengan Google</span>
+            </button>
+
+            <div className="flex items-center my-3">
+              <div className="flex-grow border-t border-slate-800"></div>
+              <span className="px-3 text-[10px] text-slate-500 uppercase">Atau Email</span>
+              <div className="flex-grow border-t border-slate-800"></div>
+            </div>
+
             <form onSubmit={handleLoginSubmit} className="space-y-3 relative z-20">
               <div><input type="email" placeholder="Alamat Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-slate-200 outline-none text-xs focus:border-slate-600" required /></div>
               <div><input type="password" placeholder="Kata Sandi" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-slate-200 outline-none text-xs focus:border-slate-600" required /></div>
@@ -574,9 +607,24 @@ export default function ZypherSuperApp() {
         {/* HALAMAN REGISTER */}
         {view === 'register' && (
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm mt-6 space-y-4">
-            <h2 className="text-base font-bold text-slate-100 text-center">Pendaftaran Aman</h2>
+            <h2 className="text-base font-bold text-slate-100 text-center">Pendaftaran Akun</h2>
             
             {loginError && <div className="bg-rose-950/40 border border-rose-900/50 text-rose-300 text-xs p-3 rounded-lg text-center font-medium">{loginError}</div>}
+
+            <button 
+              type="button" 
+              onClick={handleGoogleLogin} 
+              className="w-full py-3 rounded-lg font-semibold text-xs text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center gap-2 shadow-sm touch-manipulation active:scale-95 transition-all"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.18v3.15C3.16 21.32 7.22 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.18C.43 8.13 0 9.87 0 12s.43 3.87 1.18 5.39l4.09-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.22 0 3.16 2.68 1.18 6.61l4.09 3.15c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
+              <span>Daftar Cepat dengan Google</span>
+            </button>
+
+            <div className="flex items-center my-3">
+              <div className="flex-grow border-t border-slate-800"></div>
+              <span className="px-3 text-[10px] text-slate-500 uppercase">Atau Email</span>
+              <div className="flex-grow border-t border-slate-800"></div>
+            </div>
 
             {!isEmailVerifiedStep ? (
               <form onSubmit={handleRegisterSubmit} className="space-y-3 relative z-20">
@@ -635,6 +683,11 @@ export default function ZypherSuperApp() {
                           <div>
                             <label className="text-[11px] text-slate-400 mb-1 block">Nama Lengkap Pengirim</label>
                             <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full bg-slate-900 px-3 py-2.5 rounded border border-slate-800 text-xs text-slate-200 outline-none focus:border-slate-600" required />
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-slate-400 mb-1 block">Nomor Telepon / WhatsApp Aktif</label>
+                            <input type="tel" inputMode="tel" placeholder="Contoh: 081234567890" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} className="w-full bg-slate-900 px-3 py-2.5 rounded border border-slate-800 text-xs text-slate-200 outline-none focus:border-slate-600" required />
+                            <p className="text-[10px] text-slate-500 mt-1">Digunakan admin untuk koordinasi video unboxing saat paket tiba.</p>
                           </div>
                           <div>
                             <div className="flex justify-between items-center mb-1">
@@ -755,7 +808,7 @@ export default function ZypherSuperApp() {
                         <p className="text-xs text-slate-400">Ringkasan Pengajuan Harga:</p>
                         <h3 className="text-3xl font-bold text-slate-100">Rp {parseInt(expectedPrice || '0').toLocaleString('id-ID')}</h3>
                         <div className="bg-slate-950 text-left p-3.5 rounded-lg border border-slate-800 text-xs text-slate-300 space-y-1.5">
-                          <p><strong>Pengirim:</strong> {fullName}</p>
+                          <p><strong>Pengirim:</strong> {fullName} ({phone})</p>
                           <p><strong>Model:</strong> {device} {isDead ? '(Matot)' : ''}</p>
                           <p><strong>Rekber:</strong> {payoutMethod} - {payoutAccount}</p>
                           <p><strong>Kurir:</strong> {address.toLowerCase().includes('surabaya') || address.toLowerCase().includes('sby') ? 'Kurir Internal (Free Pickup)' : 'JNE Cashless'}</p>
@@ -776,6 +829,7 @@ export default function ZypherSuperApp() {
                           <p className="font-mono text-base font-bold tracking-widest bg-slate-100 py-1.5 text-center rounded mb-3 text-slate-950">{lastResi}</p>
                           <div className="text-[11px] space-y-1 text-slate-700">
                             <p><strong>Pengirim:</strong> {fullName}</p>
+                            <p><strong>Telepon:</strong> {phone}</p>
                             <p><strong>Tujuan:</strong> Gudang Pusat B3</p>
                             <p><strong>Rekber:</strong> {payoutMethod} ({payoutAccount})</p>
                             <p><strong>Estimasi:</strong> Rp {parseInt(expectedPrice || '0').toLocaleString('id-ID')}</p>
@@ -787,7 +841,7 @@ export default function ZypherSuperApp() {
                             Cetak / Unduh Lembar Waybill
                           </button>
                           <button type="button" onClick={() => { setView('dashboard'); setActiveTabUser('lacak'); setStep(1); }} className="w-full bg-slate-100 text-slate-950 py-2.5 rounded-lg font-semibold text-xs active:scale-95 touch-manipulation">
-                            Periksa Status Pengiriman
+                            Periksa Status Pesanan
                           </button>
                         </div>
                       </div>
@@ -806,6 +860,7 @@ export default function ZypherSuperApp() {
                         
                         <div className="text-[11px] text-slate-400 space-y-0.5">
                           <p>Kurir: <span className="text-slate-200 font-medium">{order.courierType}</span></p>
+                          <p>Telp Pengirim: <span className="text-slate-200 font-medium">{order.telepon || '-'}</span></p>
                           <p>Rekber: <span className="text-slate-200 font-medium">{order.payoutMethod} ({order.payoutAccount})</span></p>
                           <p>Harga: <span className="text-emerald-400 font-semibold">Rp {order.estimasiAwal.toLocaleString('id-ID')}</span></p>
                         </div>
@@ -862,7 +917,7 @@ export default function ZypherSuperApp() {
                         </div>
 
                         <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-[11px] space-y-1 text-slate-300">
-                          <p><strong>Pengirim:</strong> {order.nama}</p>
+                          <p><strong>Pengirim:</strong> {order.nama} (<span className="text-cyan-400 font-mono">{order.telepon || 'Tidak ada no telp'}</span>)</p>
                           <p><strong>Alamat:</strong> {order.alamat}</p>
                           <p><strong>Rekber:</strong> {order.payoutMethod} - {order.payoutAccount}</p>
                           <p><strong>Perangkat:</strong> {order.device}</p>
@@ -877,7 +932,13 @@ export default function ZypherSuperApp() {
                           </div>
                         )}
 
-                        <div>
+                        <div className="space-y-2">
+                          {order.telepon && (
+                            <button type="button" onClick={() => chatUserWhatsApp(order.telepon, order.nama, order.resi)} className="w-full bg-emerald-900/50 hover:bg-emerald-900 text-emerald-200 border border-emerald-700 py-2 rounded-lg font-semibold text-xs touch-manipulation flex items-center justify-center gap-1.5">
+                              <span>💬 Chat WhatsApp (Video Unboxing)</span>
+                            </button>
+                          )}
+
                           {order.status === 'Menunggu Pickup' && (
                             <button type="button" onClick={() => handleBarangTiba(order.id)} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 py-2.5 rounded-lg font-semibold text-xs touch-manipulation">
                               Konfirmasi Barang Tiba di Gudang
@@ -920,7 +981,7 @@ export default function ZypherSuperApp() {
               </div>
             )}
 
-            {/* PORTAL B2B (MAKELAR SERVIS / KANIBAL PART & BORONGAN) */}
+            {/* PORTAL B2B */}
             {role === 'b2b' && (
               <div className="space-y-4">
                 <div className="flex bg-slate-900 rounded-lg p-1 mb-4 border border-slate-800">
