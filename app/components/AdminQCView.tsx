@@ -756,9 +756,13 @@ export const AdminQCView: React.FC<AdminQCViewProps> = ({
       {/* MODAL 1: TAMBAH / PANEN PART KANIBALAN BARU */}
       {/* ======================================================== */}
       {showAddPartModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto">
+        <div
+          onClick={() => setShowAddPartModal(false)}
+          className="fixed inset-0 z-[100] flex items-start justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto"
+        >
           <div
-            className={`max-w-lg w-full p-6 rounded-2xl border space-y-4 shadow-2xl my-8 ${
+            onClick={(e) => e.stopPropagation()}
+            className={`max-w-lg w-full p-6 rounded-2xl border space-y-4 shadow-2xl my-6 ${
               isDark ? 'bg-slate-950 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
             }`}
           >

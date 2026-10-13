@@ -22,11 +22,17 @@ export const WaybillPrintModal: React.FC<WaybillPrintModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="max-w-md w-full space-y-4 my-8">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="max-w-md w-full space-y-3 my-4 sm:my-8"
+      >
         
         {/* ACTION BAR (HIDDEN DURING PRINT) */}
-        <div className="no-print flex items-center justify-between bg-slate-900 text-white p-3.5 rounded-2xl border border-slate-800 shadow-xl">
+        <div className="no-print sticky top-2 z-20 flex items-center justify-between bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl border border-slate-700 shadow-xl">
           <span className="text-xs font-bold font-mono">Lembar Waybill & Resi ZYPHER</span>
           <div className="flex items-center gap-2">
             <button
@@ -40,9 +46,10 @@ export const WaybillPrintModal: React.FC<WaybillPrintModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1 text-slate-400 hover:text-white"
+              className="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1 transition-colors"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
+              <span>Tutup</span>
             </button>
           </div>
         </div>

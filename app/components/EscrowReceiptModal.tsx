@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Order, ThemeMode } from '../types';
-import { Printer, X, CheckCircle2, ShieldCheck, Share2, ArrowDownLeft, Building2, Smartphone, FileText } from 'lucide-react';
+import { Printer, X, CheckCircle2, ShieldCheck, Share2 } from 'lucide-react';
 
 interface EscrowReceiptModalProps {
   order: Order | null;
@@ -12,12 +12,21 @@ interface EscrowReceiptModalProps {
 
 export const EscrowReceiptModal: React.FC<EscrowReceiptModalProps> = ({
   order,
-  theme,
   onClose,
 }) => {
-  if (!order) return null;
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (order) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [order, onClose]);
 
-  const isDark = theme === 'dark';
+  if (!order) return null;
 
   // CALCULATE BREAKDOWN
   const grossAmount = order.hargaFinal && order.hargaFinal > 0 ? order.hargaFinal : order.estimasiAwal;
@@ -53,23 +62,29 @@ export const EscrowReceiptModal: React.FC<EscrowReceiptModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="max-w-lg w-full space-y-4 my-8">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/80 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="max-w-lg w-full space-y-3 my-2 sm:my-6"
+      >
         
-        {/* ACTION BAR (HIDDEN DURING PRINT) */}
-        <div className="no-print flex items-center justify-between bg-slate-900 text-white p-3.5 rounded-2xl border border-slate-800 shadow-2xl">
+        {/* STICKY ACTION BAR (HIDDEN DURING PRINT) */}
+        <div className="no-print sticky top-2 z-20 flex items-center justify-between bg-slate-900/95 backdrop-blur-md text-white p-3 rounded-2xl border border-slate-700 shadow-2xl">
           <div className="flex items-center gap-2">
             <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
               <ShieldCheck className="h-4 w-4" />
             </span>
-            <span className="text-xs font-bold font-mono">Faktur & Bukti Transfer Rekber</span>
+            <span className="text-xs font-bold font-mono">Faktur & Bukti Rekber</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={handleShareWhatsApp}
-              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+              className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
               title="Kirim bukti transfer ke WhatsApp penjual"
             >
               <Share2 className="h-3.5 w-3.5" />
@@ -79,7 +94,7 @@ export const EscrowReceiptModal: React.FC<EscrowReceiptModalProps> = ({
             <button
               type="button"
               onClick={handlePrint}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors border border-slate-700 shadow-xs"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors border border-slate-700 shadow-xs"
               title="Cetak struk faktur atau simpan PDF"
             >
               <Printer className="h-3.5 w-3.5" />
@@ -89,10 +104,11 @@ export const EscrowReceiptModal: React.FC<EscrowReceiptModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1 text-slate-400 hover:text-white transition-colors"
-              title="Tutup"
+              className="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1 transition-colors shadow-xs"
+              title="Tutup Faktur (Esc)"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
+              <span>Tutup</span>
             </button>
           </div>
         </div>
@@ -100,17 +116,17 @@ export const EscrowReceiptModal: React.FC<EscrowReceiptModalProps> = ({
         {/* PRINTABLE RECEIPT CONTAINER */}
         <div
           id="escrow-receipt-print-area"
-          className="print-area bg-white text-slate-950 p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-2xl text-left space-y-5"
+          className="print-area bg-white text-slate-950 p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-2xl text-left space-y-4"
         >
           
           {/* HEADER */}
-          <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4">
+          <div className="flex justify-between items-start border-b-2 border-slate-900 pb-3.5">
             <div>
-              <div className="flex items-center gap-1.5 font-black text-lg tracking-wider font-mono">
+              <div className="flex items-center gap-1.5 font-black text-base sm:text-lg tracking-wider font-mono">
                 <span className="text-emerald-700">♻️ ZYPHER</span>
                 <span className="text-slate-900">.ID</span>
               </div>
-              <span className="text-[10px] text-slate-500 font-semibold block">
+              <span className="text-[10px] text-slate-600 font-semibold block">
                 PT ZYPHER SOLUSI SIRKULAR INDONESIA
               </span>
               <span className="text-[9px] text-slate-400 block">
@@ -123,15 +139,15 @@ export const EscrowReceiptModal: React.FC<EscrowReceiptModalProps> = ({
                 BUKTI RESMI KLIRING
               </span>
               <p className="font-mono text-[10px] text-slate-500">
-                {order.createdAt || '12 Okt 2026'} &bull; 18:05 WIB
+                {order.createdAt || '12 Okt 2026'}
               </p>
             </div>
           </div>
 
           {/* SETTLED STATUS BANNER */}
-          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+          <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+              <div className="h-8 w-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
                 <CheckCircle2 className="h-5 w-5" />
               </div>
               <div>
@@ -144,14 +160,14 @@ export const EscrowReceiptModal: React.FC<EscrowReceiptModalProps> = ({
               </div>
             </div>
 
-            <div className="text-right font-mono text-[9px] text-emerald-800 hidden sm:block">
+            <div className="text-right font-mono text-[9px] text-emerald-800 hidden sm:block flex-shrink-0">
               <div>Ref: <strong className="font-bold">{escrowRefNo}</strong></div>
               <div>STAN: <span>{biFastRef}</span></div>
             </div>
           </div>
 
           {/* PARTIES INFO */}
-          <div className="grid grid-cols-2 gap-3 text-xs border-b pb-4 border-slate-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs border-b pb-3.5 border-slate-200">
             {/* ESCROW AGENT */}
             <div className="space-y-1 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
               <span className="text-[9px] font-bold text-slate-400 uppercase font-mono block">
@@ -163,20 +179,20 @@ export const EscrowReceiptModal: React.FC<EscrowReceiptModalProps> = ({
             </div>
 
             {/* SELLER / BENEFICIARY */}
-            <div className="space-y-1 p-2.5 rounded-xl bg-emerald-50/50 border border-emerald-100">
+            <div className="space-y-1 p-2.5 rounded-xl bg-emerald-50/50 border border-emerald-200">
               <span className="text-[9px] font-bold text-emerald-700 uppercase font-mono block">
                 Penerima Dana (Penjual):
               </span>
               <p className="font-bold text-slate-900 leading-tight">{order.nama}</p>
-              <p className="text-[10px] text-slate-700 font-mono font-bold">
+              <p className="text-[10px] text-slate-800 font-mono font-bold">
                 {order.payoutMethod} &bull; {order.payoutAccount}
               </p>
-              <p className="text-[9px] text-slate-500">Telp: {order.telepon}</p>
+              <p className="text-[9px] text-slate-600">Telp: {order.telepon}</p>
             </div>
           </div>
 
           {/* ITEM DETAILS */}
-          <div className="space-y-1.5 text-xs">
+          <div className="space-y-1 text-xs">
             <span className="text-[10px] font-bold text-slate-400 uppercase font-mono block">
               Objek Transaksi E-Waste:
             </span>
@@ -195,7 +211,7 @@ export const EscrowReceiptModal: React.FC<EscrowReceiptModalProps> = ({
           </div>
 
           {/* FINANCIAL BREAKDOWN (TRANSPARENCY CALCULATION) */}
-          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs">
             <span className="text-[10px] font-bold text-slate-400 uppercase font-mono block">
               Rincian Perhitungan Transparan:
             </span>
@@ -242,7 +258,7 @@ export const EscrowReceiptModal: React.FC<EscrowReceiptModalProps> = ({
           </div>
 
           {/* SECURITY FOOTER & DIGITAL STAMP */}
-          <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] text-slate-500">
+          <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-slate-500">
             <div className="space-y-0.5 text-center sm:text-left">
               <p className="font-mono text-[9px] text-slate-400">
                 Hash: <span className="font-bold">sha256: 7f83a1b...c2940e</span>
@@ -253,9 +269,21 @@ export const EscrowReceiptModal: React.FC<EscrowReceiptModalProps> = ({
             </div>
 
             {/* STAMP BADGE */}
-            <div className="px-3 py-1.5 rounded-xl border-2 border-dashed border-emerald-600 text-emerald-800 font-black font-mono text-[10px] tracking-wider uppercase text-center rotate-[-2deg] shadow-2xs">
+            <div className="px-2.5 py-1 rounded-xl border-2 border-dashed border-emerald-600 text-emerald-800 font-black font-mono text-[10px] tracking-wider uppercase text-center rotate-[-2deg]">
               ✓ REKBER TERVERIFIKASI
             </div>
+          </div>
+
+          {/* BOTTOM CLOSE BUTTON FOR EXTRA ACCESSIBILITY (HIDDEN IN PRINT) */}
+          <div className="no-print pt-2 border-t border-slate-200 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition-all flex items-center justify-center gap-1.5 shadow-sm"
+            >
+              <X className="h-4 w-4" />
+              <span>Tutup Faktur & Kembali ke Halaman</span>
+            </button>
           </div>
 
         </div>
