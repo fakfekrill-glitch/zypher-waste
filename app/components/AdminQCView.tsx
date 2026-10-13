@@ -18,6 +18,7 @@ import {
   ShoppingBag,
   Send,
   X,
+  FileText,
 } from 'lucide-react';
 
 interface AdminQCViewProps {
@@ -30,6 +31,7 @@ interface AdminQCViewProps {
   onSaveCatalogItem: (item: B2BCatalogItem) => void;
   onUpdateCatalogStock: (id: string, delta: number) => void;
   onDeleteCatalogItem: (id: string) => void;
+  onOpenEscrowReceipt?: (order: Order) => void;
 }
 
 export const AdminQCView: React.FC<AdminQCViewProps> = ({
@@ -42,6 +44,7 @@ export const AdminQCView: React.FC<AdminQCViewProps> = ({
   onSaveCatalogItem,
   onUpdateCatalogStock,
   onDeleteCatalogItem,
+  onOpenEscrowReceipt,
 }) => {
   const isDark = theme === 'dark';
   const [adminTab, setAdminTab] = useState<'qc' | 'b2b-orders' | 'spareparts' | 'inventory'>('qc');
@@ -372,7 +375,10 @@ export const AdminQCView: React.FC<AdminQCViewProps> = ({
                     <div className="space-y-2">
                       <button
                         type="button"
-                        onClick={() => onUpdateStatus(order.id, 'Selesai & Cair')}
+                        onClick={() => {
+                          onUpdateStatus(order.id, 'Selesai & Cair');
+                          onOpenEscrowReceipt?.({ ...order, status: 'Selesai & Cair' });
+                        }}
                         className="w-full py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 shadow-xs"
                       >
                         <Check className="h-4 w-4" />
@@ -729,6 +735,16 @@ export const AdminQCView: React.FC<AdminQCViewProps> = ({
                       + Tambah ke B2B
                     </button>
                   )}
+
+                  <button
+                    type="button"
+                    onClick={() => onOpenEscrowReceipt?.(order)}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 flex items-center gap-1 transition-colors"
+                    title="Buka bukti kliring transfer rekber"
+                  >
+                    <FileText className="h-3 w-3" />
+                    <span>Faktur Rekber</span>
+                  </button>
                 </div>
               </div>
             ))}

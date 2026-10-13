@@ -3,12 +3,13 @@
 import React from 'react';
 import { Order, ThemeMode } from '../types';
 import { WA_ADMIN_NUMBER } from '../lib/constants';
-import { Package, Truck, ShieldCheck, CheckCircle2, MessageSquare, Printer } from 'lucide-react';
+import { Package, Truck, ShieldCheck, CheckCircle2, MessageSquare, Printer, FileText } from 'lucide-react';
 
 interface UserTrackingViewProps {
   orders: Order[];
   theme: ThemeMode;
   onOpenPrintWaybill: (order: Order) => void;
+  onOpenEscrowReceipt: (order: Order) => void;
   onNewShipment: () => void;
 }
 
@@ -16,6 +17,7 @@ export const UserTrackingView: React.FC<UserTrackingViewProps> = ({
   orders,
   theme,
   onOpenPrintWaybill,
+  onOpenEscrowReceipt,
   onNewShipment,
 }) => {
   const isDark = theme === 'dark';
@@ -174,6 +176,17 @@ export const UserTrackingView: React.FC<UserTrackingViewProps> = ({
                   >
                     <MessageSquare className="h-4 w-4" />
                     <span>Konfirmasi Video Unboxing & Pencairan via WhatsApp</span>
+                  </button>
+                )}
+
+                {order.status === 'Selesai & Cair' && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenEscrowReceipt(order)}
+                    className="py-2 px-3 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition-colors shadow-xs animate-pulse-gentle"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Lihat Bukti Transfer & Faktur Rekber</span>
                   </button>
                 )}
 

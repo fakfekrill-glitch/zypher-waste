@@ -12,6 +12,7 @@ import { AdminQCView } from './components/AdminQCView';
 import { B2BLoginGateway } from './components/B2BLoginGateway';
 import { AdminLoginGateway } from './components/AdminLoginGateway';
 import { WaybillPrintModal } from './components/WaybillPrintModal';
+import { EscrowReceiptModal } from './components/EscrowReceiptModal';
 import {
   Smartphone,
   Wrench,
@@ -44,6 +45,7 @@ export default function ZypherApp() {
 
   // MODAL & PRINT
   const [printOrder, setPrintOrder] = useState<Order | null>(null);
+  const [escrowReceiptOrder, setEscrowReceiptOrder] = useState<Order | null>(null);
 
   // AUTH SESSION & FORM STATES
   const [session, setSession] = useState<{
@@ -439,6 +441,7 @@ export default function ZypherApp() {
                     orders={orders}
                     theme={theme}
                     onOpenPrintWaybill={(ord) => setPrintOrder(ord)}
+                    onOpenEscrowReceipt={(ord) => setEscrowReceiptOrder(ord)}
                     onNewShipment={() => setUserTab('kirim')}
                   />
                 )}
@@ -476,6 +479,7 @@ export default function ZypherApp() {
                   onSaveCatalogItem={handleSaveCatalogItem}
                   onUpdateCatalogStock={handleUpdateCatalogStock}
                   onDeleteCatalogItem={handleDeleteCatalogItem}
+                  onOpenEscrowReceipt={(ord) => setEscrowReceiptOrder(ord)}
                 />
               ) : (
                 <AdminLoginGateway
@@ -713,6 +717,13 @@ export default function ZypherApp() {
         order={printOrder}
         theme={theme}
         onClose={() => setPrintOrder(null)}
+      />
+
+      {/* ESCROW SETTLEMENT RECEIPT MODAL */}
+      <EscrowReceiptModal
+        order={escrowReceiptOrder}
+        theme={theme}
+        onClose={() => setEscrowReceiptOrder(null)}
       />
 
     </div>
