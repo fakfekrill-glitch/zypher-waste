@@ -4,6 +4,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendEmailVerification,
+  sendPasswordResetEmail,
   reload,
   GoogleAuthProvider,
   signInWithPopup,
@@ -73,6 +74,12 @@ export class ZypherBackendService {
     const cred = await signInWithEmailAndPassword(auth, email, pass);
     await this.sendDiscordNotice(`[AUTH LOGIN] Sesi email aktif: ${email}`);
     return cred.user;
+  }
+
+  public static async resetPasswordWithEmail(email: string) {
+    if (!auth) throw new Error('Firebase Auth belum terhubung');
+    await sendPasswordResetEmail(auth, email);
+    await this.sendDiscordNotice(`[AUTH RESET PASSWORD] Tautan reset sandi dikirim ke: ${email}`);
   }
 
   public static async logoutUser() {

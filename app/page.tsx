@@ -56,6 +56,7 @@ export default function ZypherApp() {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [authError, setAuthError] = useState<string>('');
+  const [authSuccessMsg, setAuthSuccessMsg] = useState<string>('');
 
   // TOAST NOTIFICATION
   const [toastMsg, setToastMsg] = useState<string>('');
@@ -244,6 +245,7 @@ export default function ZypherApp() {
     }
 
     // REGULAR USER FIREBASE AUTH
+    setAuthSuccessMsg('');
     try {
       if (authMode === 'register') {
         if (password.length < 8) {
@@ -259,6 +261,23 @@ export default function ZypherApp() {
       }
     } catch (err: any) {
       setAuthError(`Gagal: ${err.message}`);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setAuthError('');
+    setAuthSuccessMsg('');
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setAuthError('Masukkan alamat email Anda terlebih dahulu pada kolom email di atas untuk menerima tautan reset kata sandi.');
+      return;
+    }
+    try {
+      await ZypherBackendService.resetPasswordWithEmail(cleanEmail);
+      setAuthSuccessMsg(`Tautan reset kata sandi telah dikirim ke ${cleanEmail}. Silakan periksa Inbox atau folder Spam email Anda.`);
+      showToast(`📩 Email reset kata sandi dikirim ke ${cleanEmail}!`);
+    } catch (err: any) {
+      setAuthError(`Gagal mengirim email reset: ${err.message}`);
     }
   };
 
@@ -584,6 +603,13 @@ export default function ZypherApp() {
               </div>
             )}
 
+            {authSuccessMsg && (
+              <div className="p-3 rounded-xl text-xs bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-900 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                <span>{authSuccessMsg}</span>
+              </div>
+            )}
+
             {/* GOOGLE ONE CLICK */}
             <button
               type="button"
@@ -627,9 +653,20 @@ export default function ZypherApp() {
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Kata Sandi
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                    Kata Sandi
+                  </label>
+                  {authMode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline transition-colors"
+                    >
+                      Lupa kata sandi?
+                    </button>
+                  )}
+                </div>
                 <input
                   type="password"
                   placeholder="Kata sandi akun..."
@@ -656,6 +693,7 @@ export default function ZypherApp() {
                 onClick={() => {
                   setAuthMode(authMode === 'login' ? 'register' : 'login');
                   setAuthError('');
+                  setAuthSuccessMsg('');
                 }}
                 className="text-xs text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-semibold"
               >
