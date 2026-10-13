@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ThemeMode } from '../types';
-import { Smartphone, ShieldCheck, Wrench, Flame, ArrowRight, CheckCircle2, Truck } from 'lucide-react';
+import { Smartphone, ShieldCheck, Wrench, ArrowRight } from 'lucide-react';
 
 interface CircularFlowHeroProps {
   theme: ThemeMode;
@@ -21,77 +21,133 @@ export const CircularFlowHero: React.FC<CircularFlowHeroProps> = ({
     <section
       className={`rounded-3xl border p-6 sm:p-10 relative overflow-hidden transition-all duration-300 shadow-sm ${
         isDark
-          ? 'bg-gradient-to-b from-slate-900 via-slate-900/60 to-slate-950 border-slate-800'
-          : 'bg-gradient-to-b from-white via-slate-50 to-emerald-50/30 border-slate-200'
+          ? 'bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 border-slate-800'
+          : 'bg-gradient-to-br from-white via-slate-50 to-emerald-50/40 border-slate-200'
       }`}
     >
       {/* BACKGROUND ACCENT GLOW */}
       <div
-        className={`absolute -top-24 -right-24 w-80 h-80 rounded-full blur-3xl pointer-events-none ${
-          isDark ? 'bg-emerald-500/10' : 'bg-emerald-300/20'
+        className={`absolute -top-24 -right-24 w-96 h-96 rounded-full blur-3xl pointer-events-none ${
+          isDark ? 'bg-emerald-500/12' : 'bg-emerald-300/25'
         }`}
       />
 
-      <div className="relative z-10 max-w-3xl space-y-4">
-        <div
-          className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
-            isDark
-              ? 'bg-emerald-950/70 border border-emerald-800 text-emerald-300'
-              : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-          }`}
-        >
-          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Platform Sirkular Daur Ulang Gadget & Jaringan Rekber Resmi</span>
-        </div>
-
-        <h1
-          className={`text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight ${
-            isDark ? 'text-white' : 'text-slate-900'
-          }`}
-        >
-          Ubah HP Rusak Jadi Rupiah, Suplai Suku Cadang Kanibal untuk Teknisi.
-        </h1>
-
-        <p
-          className={`text-xs sm:text-sm sm:leading-relaxed max-w-2xl ${
-            isDark ? 'text-slate-400' : 'text-slate-600'
-          }`}
-        >
-          ZYPHER.ID menghubungkan pemilik smartphone/laptop mati total (matot) dengan mitra teknisi servis profesional
-          dan fasilitas pengolahan limbah B3. Dilindungi sistem Rekber (Escrow) terpercaya, inspeksi video unboxing,
-          serta gratis jemput untuk wilayah Surabaya dan sekitarnya.
-        </p>
-
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onStartShipment}
-            className={`px-5 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm active:scale-95 ${
+      {/* TOP HERO ROW: LEFT CONTENT + RIGHT SMOOTH FADE LOGO */}
+      <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+        
+        {/* LEFT COLUMN: TEXT & CTA */}
+        <div className="max-w-2xl space-y-4 flex-1">
+          <div
+            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
               isDark
-                ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
-                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                ? 'bg-emerald-950/70 border border-emerald-800 text-emerald-300'
+                : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
             }`}
           >
-            <span>Jual HP Rusak Sekarang</span>
-            <ArrowRight className="h-4 w-4" />
-          </button>
+            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Platform Sirkular Daur Ulang Gadget & Jaringan Rekber Resmi</span>
+          </div>
 
-          <button
-            type="button"
-            onClick={onExploreCatalog}
-            className={`px-5 py-3 rounded-xl text-xs font-semibold border transition-all ${
-              isDark
-                ? 'bg-slate-900 hover:bg-slate-800 text-amber-300 border-slate-700'
-                : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300 shadow-xs'
+          <h1
+            className={`text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight ${
+              isDark ? 'text-white' : 'text-slate-900'
             }`}
           >
-            Lihat Katalog Part Kanibalan (B2B)
-          </button>
+            Ubah HP Rusak Jadi Rupiah, Suplai Suku Cadang Kanibal untuk Teknisi.
+          </h1>
+
+          <p
+            className={`text-xs sm:text-sm sm:leading-relaxed max-w-2xl ${
+              isDark ? 'text-slate-400' : 'text-slate-600'
+            }`}
+          >
+            ZYPHER.ID menghubungkan pemilik smartphone/laptop mati total (matot) dengan mitra teknisi servis profesional
+            dan fasilitas pengolahan limbah B3. Dilindungi sistem Rekber (Escrow) terpercaya, inspeksi video unboxing,
+            serta gratis jemput untuk wilayah Surabaya dan sekitarnya.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onStartShipment}
+              className={`px-5 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm active:scale-95 ${
+                isDark
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              }`}
+            >
+              <span>Jual HP Rusak Sekarang</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={onExploreCatalog}
+              className={`px-5 py-3 rounded-xl text-xs font-semibold border transition-all ${
+                isDark
+                  ? 'bg-slate-900 hover:bg-slate-800 text-amber-300 border-slate-700'
+                  : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300 shadow-xs'
+              }`}
+            >
+              Lihat Katalog Part Kanibalan (B2B)
+            </button>
+          </div>
         </div>
+
+        {/* RIGHT COLUMN: ZYPHERS LOGO WITH SMOOTH FADE & AMBIENT GLOW */}
+        <div className="relative flex items-center justify-center lg:w-[380px] xl:w-[430px] min-h-[180px] sm:min-h-[230px] select-none pointer-events-none">
+          
+          {/* SOFT LAYERED RADIAL FADE AURA */}
+          <div
+            className={`absolute inset-0 rounded-full blur-3xl transition-opacity duration-700 ${
+              isDark
+                ? 'bg-gradient-to-tr from-emerald-500/20 via-teal-400/10 to-transparent opacity-90'
+                : 'bg-gradient-to-tr from-emerald-400/25 via-teal-300/15 to-transparent opacity-80'
+            }`}
+          />
+
+          {/* SUBTLE BACKGROUND ECHO WATERMARK (FADED) */}
+          <img
+            src="/zyphers-logo.png"
+            alt=""
+            aria-hidden="true"
+            className={`absolute w-[115%] max-w-none object-contain scale-110 blur-[2px] transition-all duration-700 ${
+              isDark ? 'opacity-[0.06]' : 'invert opacity-[0.04]'
+            }`}
+            style={{
+              WebkitMaskImage: 'radial-gradient(ellipse 75% 70% at 50% 50%, black 20%, transparent 85%)',
+              maskImage: 'radial-gradient(ellipse 75% 70% at 50% 50%, black 20%, transparent 85%)',
+            }}
+          />
+
+          {/* MAIN FOREGROUND LOGO WITH SMOOTH GRADIENT FADE MASK */}
+          <div
+            className="relative z-10 w-full flex items-center justify-center animate-float"
+            style={{
+              WebkitMaskImage:
+                'linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)',
+              WebkitMaskComposite: 'source-in',
+              maskImage:
+                'radial-gradient(ellipse 88% 82% at 50% 50%, rgba(0,0,0,1) 55%, rgba(0,0,0,0.65) 80%, rgba(0,0,0,0) 100%)',
+            }}
+          >
+            <img
+              src="/zyphers-logo.png"
+              alt="Zyphers Official Logo"
+              className={`w-64 sm:w-80 lg:w-96 h-auto object-contain transition-all duration-500 ${
+                isDark
+                  ? 'opacity-90 drop-shadow-[0_0_28px_rgba(16,185,129,0.28)]'
+                  : 'invert opacity-85 drop-shadow-[0_8px_24px_rgba(5,150,105,0.16)]'
+              }`}
+            />
+          </div>
+
+        </div>
+
       </div>
 
       {/* 3-STAGE CIRCULAR FLOW VISUALIZER */}
-      <div className="mt-10 pt-8 border-t border-slate-200/80 dark:border-slate-800">
+      <div className="mt-10 pt-8 border-t border-slate-200/80 dark:border-slate-800 relative z-10">
         <div className="flex items-center justify-between mb-4">
           <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500">
             Alur Sirkularitas E-Waste Terpadu (Zero-Waste Lifecycle):
