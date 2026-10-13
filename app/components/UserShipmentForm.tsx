@@ -85,14 +85,14 @@ export const UserShipmentForm: React.FC<UserShipmentFormProps> = ({
           img.onload = () => {
             try {
               const canvas = document.createElement('canvas');
-              const MAX_WIDTH = 400;
-              const scaleSize = MAX_WIDTH / img.width;
-              canvas.width = MAX_WIDTH;
-              canvas.height = img.height * scaleSize;
+              const MAX_WIDTH = 720;
+              const scaleSize = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+              canvas.width = Math.round(img.width * scaleSize);
+              canvas.height = Math.round(img.height * scaleSize);
               const ctx = canvas.getContext('2d');
               ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-              const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+              const compressedBase64 = canvas.toDataURL('image/jpeg', 0.78);
               setUserPhotos((prev) => [...prev, { file, preview: compressedBase64 }]);
             } catch {
               alert('Gagal memproses gambar');

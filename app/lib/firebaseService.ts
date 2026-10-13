@@ -49,6 +49,131 @@ export class ZypherBackendService {
     } catch {}
   }
 
+  private static dataUrlToBlob(dataUrl: string): Blob | null {
+    try {
+      const parts = dataUrl.split(',');
+      if (parts.length < 2) return null;
+      const mimeMatch = parts[0].match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const bstr = atob(parts[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], { type: mime });
+    } catch {
+      return null;
+    }
+  }
+
+  public static async sendDiscordOrderWithPhotos(order: Order): Promise<void> {
+    try {
+      if (!DISCORD_WEBHOOK_URL) return;
+
+      const baseEmbed: any = {
+        title: `📦 PESANAN BARU E-WASTE — ${order.resi}`,
+        url: 'https://zypher-app.vercel.app',
+        color: 0x10b981,
+        fields: [
+          {
+            name: '📱 Perangkat & Mesin',
+            value: `**${order.device}** (${order.isDead ? 'Mati Total / Matot' : 'Mesin Hidup'})`,
+            inline: true,
+          },
+          {
+            name: '🔍 Kondisi Fisik',
+            value: `Layar: **${order.lcdCondition}** | Bodi: **${order.bodyCondition}**`,
+            inline: true,
+          },
+          {
+            name: '💰 Nilai Rekber & Pencairan',
+            value: `**Rp ${order.estimasiAwal.toLocaleString('id-ID')}** via ${order.payoutMethod} (${order.payoutAccount})`,
+            inline: false,
+          },
+          {
+            name: '👤 Pengirim & WhatsApp',
+            value: `${order.nama} (${order.telepon})`,
+            inline: true,
+          },
+          {
+            name: '🚚 Kurir & Waktu',
+            value: `${order.courierType} • ${order.createdAt}`,
+            inline: true,
+          },
+          {
+            name: '📍 Alamat Penjemputan',
+            value: order.alamat || '-',
+            inline: false,
+          },
+        ],
+        footer: {
+          text: 'ZYPHER.ID — Ekosistem Sirkular E-Waste & Rekber Kanibalan B2B',
+        },
+      };
+
+      const photoBlobs: { blob: Blob; filename: string }[] = [];
+      const externalUrls: string[] = [];
+
+      if (order.photos && order.photos.length > 0) {
+        order.photos.forEach((ph, idx) => {
+          if (ph.startsWith('data:image/')) {
+            const blob = this.dataUrlToBlob(ph);
+            if (blob) {
+              photoBlobs.push({ blob, filename: `foto-kondisi-${idx + 1}.jpg` });
+            }
+          } else if (ph.startsWith('http://') || ph.startsWith('https://')) {
+            externalUrls.push(ph);
+          }
+        });
+      }
+
+      if (photoBlobs.length > 0) {
+        baseEmbed.image = { url: `attachment://${photoBlobs[0].filename}` };
+        const embeds = [baseEmbed];
+
+        for (let i = 1; i < photoBlobs.length; i++) {
+          embeds.push({
+            url: 'https://zypher-app.vercel.app',
+            image: { url: `attachment://${photoBlobs[i].filename}` },
+          });
+        }
+
+        const formData = new FormData();
+        formData.append(
+          'payload_json',
+          JSON.stringify({
+            content: `📸 **[PESANAN BARU E-WASTE]** Resi **${order.resi}** dari **${order.nama}** (${photoBlobs.length} foto kondisi fisik terlampir):`,
+            embeds,
+          })
+        );
+
+        photoBlobs.forEach((item, idx) => {
+          formData.append(`files[${idx}]`, item.blob, item.filename);
+        });
+
+        await fetch(DISCORD_WEBHOOK_URL, {
+          method: 'POST',
+          body: formData,
+        });
+        return;
+      }
+
+      if (externalUrls.length > 0) {
+        baseEmbed.image = { url: externalUrls[0] };
+      }
+
+      await fetch(DISCORD_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: `📦 **[PESANAN BARU E-WASTE]** Resi **${order.resi}** | Device: **${order.device}**`,
+          embeds: [baseEmbed],
+        }),
+      });
+    } catch {}
+  }
+
   // --- AUTH HELPERS ---
   public static getAuthInstance() {
     return auth;
@@ -124,10 +249,8 @@ export class ZypherBackendService {
       console.log('Firebase sync note: local cache saved');
     }
 
-    // Send Discord alert
-    await this.sendDiscordNotice(
-      `📦 [PESANAN BARU E-WASTE] Resi: ${newOrder.resi} | Device: ${newOrder.device} (${newOrder.isDead ? 'Matot' : 'Hidup'}) | Pengirim: ${newOrder.nama} | Rekber: Rp ${newOrder.estimasiAwal.toLocaleString('id-ID')} (${newOrder.payoutMethod})`
-    );
+    // Send Discord alert with actual attached photos (multipart/form-data)
+    await this.sendDiscordOrderWithPhotos(newOrder);
 
     return updated;
   }
